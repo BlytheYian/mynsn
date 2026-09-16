@@ -1,0 +1,2882 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>myNSN</title>
+<link rel="icon" href="data:," />
+<style>
+  :root {
+    --ink: #1e293b; --sub: #64748b; --line: #e2e8f0; --bg: #f1f5f9;
+    --brand: #D74D65; --brand-dark: #B03F53; --brand-rgb: 215,77,101; --brand-tint: #FBE6EA;
+    --brand-ink: #ffffff; --ok: #16a34a; --pending: #b45309; --bad: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; }
+
+  .hidden { display:none !important; }
+
+  .app { display:flex; flex-direction:column; min-height:100vh; }
+
+  .layout { display:flex; flex:1; min-height:0; }
+
+  .sidebar { width:196px; flex-shrink:0; background:#fff; border-right:1px solid var(--line); padding:16px 10px; display:flex; flex-direction:column; }
+  .sidebar-brand { font-size:20px; font-weight:700; color:var(--brand); padding:6px 14px 18px; }
+  .side-item {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 14px;
+    border-radius:9px; border:none; background:transparent; cursor:pointer; font-size:13px;
+    color:#475569; margin-bottom:4px; font-weight:500; transition:.15s;
+  }
+  .side-item:hover { background:#f8fafc; }
+  .side-item.active { color:var(--brand); font-weight:700; }
+  .side-item .side-icon { flex-shrink:0; display:flex; }
+  .side-item .side-icon svg { width:16px; height:16px; }
+
+  /* ── 側欄最下方：帳號／登入 ───────────────────────────────────────────── */
+  .sidebar-footer { margin-top:auto; padding-top:12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:2px; }
+  .account-wrap { position:relative; }
+  .account-item {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    padding:7px 10px; border-radius:9px; border:none; background:transparent; cursor:pointer;
+    font-size:12.5px; color:#475569; transition:.15s;
+  }
+  .account-item:hover { background:#f8fafc; }
+  .account-item-disabled { cursor:not-allowed; opacity:.5; }
+  .account-item-disabled:hover { background:transparent; }
+  .avatar-placeholder { width:26px; height:26px; border-radius:50%; background:#e2e8f0; flex-shrink:0; background-position:center; background-size:cover; }
+  .github-mark { flex-shrink:0; display:flex; align-items:center; color:#475569; }
+  .avatar-connected { background-color:var(--brand-tint); border:1.5px solid var(--brand); }
+  .account-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gh-logout-btn {
+    background:#f1f5f9; color:#475569; border:none; border-radius:6px;
+    padding:3px 8px; font-size:11px; cursor:pointer; flex-shrink:0; transition:.15s;
+  }
+  .gh-logout-btn:hover { background:#e2e8f0; }
+  .menu-item {
+    display:block; width:100%; text-align:left; padding:8px 10px; border-radius:8px;
+    border:none; background:transparent; cursor:pointer; font-size:12.5px; color:#475569; transition:.15s;
+  }
+  .menu-item:hover { background:#f8fafc; color:var(--bad); }
+  .gh-login-panel {
+    position:absolute; bottom:calc(100% + 10px); left:0; width:260px;
+    background:#fff; color:var(--ink); border-radius:12px; border:1px solid var(--line);
+    box-shadow:0 14px 34px rgba(0,0,0,.22); padding:16px; z-index:60;
+  }
+
+  /* .content 用 flex column + .page 的 margin:auto 做垂直置中：比 justify-content:center
+     更安全，內容比可視高度高的時候 auto margin 會自動退回 0（貼齊頂部、正常捲動），
+     不會把內容上半部捲到看不見。.page 一定要明講 width:100%——flex item 只要有一邊
+     margin 是 auto，預設的 stretch 就不會生效，寬度會縮到只剩內容大小。上下 padding
+     一定要對稱，不然 margin:auto 置中的是「扣掉 padding 後的內容框」，padding 不對稱
+     視覺上就會偏移。 */
+  .content { flex:1; min-width:0; min-height:0; padding:32px 20px; overflow-y:auto; display:flex; flex-direction:column; }
+  .page { display:none; width:100%; max-width: 1180px; margin: auto; }
+  .page.active { display:block; }
+  #page-test.page { max-width: 1600px; }
+
+  .history-panel { min-height:600px; }
+
+  /* ── 測試頁：程式碼編輯框最寬、步驟面板是右邊固定寬度的側欄 ──────────── */
+  .test-layout { display:flex; align-items:flex-start; gap:16px; }
+  .code-panel {
+    flex:1; min-width:0; height:600px; background:#fff;
+    display:flex; flex-direction:column;
+  }
+  .code-panel-header {
+    flex-shrink:0; padding:10px 18px; font-size:13px; font-weight:700; color:var(--ink);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .code-tabs { display:flex; gap:4px; }
+  .code-tab {
+    padding:6px 12px; border:none; border-radius:7px; background:transparent;
+    font-size:13px; font-weight:700; color:#94a3b8; cursor:pointer; transition:.15s;
+  }
+  .code-tab:hover:not(.active) { color:var(--ink); }
+  .code-tab.active { color:var(--ink); background:#f1f5f9; }
+
+  /* 匯入按鈕（SVG）＋懸浮框：上傳／GitHub／AI 生成收在這裡，不佔用程式碼框空間 */
+  .code-header-actions { position:relative; display:flex; align-items:center; }
+  .icon-btn {
+    width:30px; height:30px; border:none; border-radius:8px; background:transparent;
+    color:#94a3b8; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:.15s;
+  }
+  .icon-btn:hover, .icon-btn.active { background:#f1f5f9; color:var(--ink); }
+  .import-popover {
+    position:absolute; top:calc(100% + 8px); right:0; width:380px; max-height:75vh;
+    overflow-y:auto; background:#fff; border-radius:14px;
+    box-shadow:0 12px 32px rgba(15,23,42,.16); border:1px solid var(--line);
+    padding:18px; z-index:30; text-align:left;
+  }
+  /* 行數欄跟編輯區並排；字型、字級、行高、上下 padding 全部要跟編輯區完全一致，
+     每一行才會對齊。程式碼本體是「透明 textarea 疊在語法上色的 <pre> 上面」這個
+     常見的簡易做法：textarea 負責輸入／游標／選取，pre 負責顯示上色後的文字，
+     兩者用 position:absolute 疊在同一個位置，捲動位置用 JS 同步。 */
+  .code-editor-wrap { flex:1; min-height:0; display:flex; overflow:hidden; }
+  .code-linenos {
+    flex-shrink:0; width:40px; padding:16px 8px 16px 0; overflow:hidden;
+    background:#f8fafc; border-right:1px solid var(--line);
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size:12.5px; line-height:1.6; color:#94a3b8; text-align:right;
+    white-space:pre; user-select:none;
+  }
+  .code-editor-area { position:relative; flex:1; min-width:0; }
+  .code-highlight, .code-editor {
+    position:absolute; inset:0; margin:0; border:none; border-radius:0; max-height:none;
+    padding:16px 18px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size:12.5px; line-height:1.6; white-space:pre;
+  }
+  .code-highlight { overflow:hidden; pointer-events:none; background:#fff; color:var(--ink); }
+  .code-editor {
+    overflow:auto; resize:none; outline:none; background:transparent;
+    color:transparent; caret-color:var(--ink); z-index:1;
+  }
+  .code-editor:focus { box-shadow:none; }
+  .code-editor::selection { background: rgba(var(--brand-rgb), .30); }
+  /* 鎖定分頁：唯讀，用底色跟游標樣式提示「這份是已送出分析、不能再改的版本」。
+     textarea 底色不能設成不透明色，會把後面 pre 上色層蓋住，只有 pre 要換色。 */
+  #code-pane-locked .code-highlight { background:#f8fafc; }
+  #code-pane-locked .code-editor { cursor:default; }
+  /* 選函式時，整個函式所在的那幾行整欄標記出來（不只單行），疊在上色層之上、
+     textarea 之下，半透明所以底下文字看得到，跟 IDE 的「跳到定義」效果類似。 */
+  .func-highlight { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .func-highlight .band { position:absolute; left:0; right:0; background:rgba(var(--brand-rgb), .12); border-left:3px solid var(--brand); }
+  .tok-keyword { color:#D74D65; font-weight:600; }
+  .tok-string { color:#2bca65; }
+  .tok-comment { color:#94a3b8; font-style:italic; }
+  .tok-number { color:#da7f4e; }
+  .tok-decorator { color:#34a8df; }
+  .tok-builtin { color:#9333ea; }
+  .tok-op { color:#64748b; }
+  /* 已選函式的參數名稱，在鎖定分頁的程式碼裡額外標出來，跟第 2 步的參數表對照 */
+  .tok-param { background:rgba(218,127,78,.30); border-radius:3px; }
+
+  /* ── 測試報告分頁：缺口逐一列出＋AI 解釋、各缺口花費迭代數的長條圖 ────────── */
+  .report-pane { flex:1; min-height:0; overflow-y:auto; padding:20px 24px; }
+  .report-section-title { font-size:13px; font-weight:700; color:var(--ink); margin:0 0 10px; }
+  .report-section-title:not(:first-child) { margin-top:26px; }
+  .report-hint { font-size:12px; color:#94a3b8; margin:-6px 0 12px; }
+  .gap-card { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .gap-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .gap-expr { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size:12.5px; color:var(--ink); }
+  .gap-direction { color:#94a3b8; font-size:12px; margin-left:6px; }
+  .gap-status-badge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .gap-status-badge.covered { background:#dcfce7; color:#15803d; }
+  .gap-status-badge.infeasible { background:#f1f5f9; color:#64748b; }
+  .gap-status-badge.gate_exhausted { background:#fef3c7; color:#92400e; }
+  .gap-status-badge.uncovered { background:#fee2e2; color:#991b1b; }
+  .gap-testcase { margin-top:8px; font-size:12px; color:#475569; }
+  .gap-testcase code { background:#f8fafc; padding:1px 5px; border-radius:4px; }
+  .gap-explain-text { margin-top:8px; font-size:12.5px; color:#475569; background:#f8fafc; border-radius:8px; padding:10px 12px; line-height:1.6; }
+  .gap-chart-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .gap-chart-label { flex:0 0 200px; font-size:11.5px; color:#475569; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gap-chart-bar-bg { flex:1; height:14px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+  .gap-chart-bar { height:100%; background:var(--brand); border-radius:999px; }
+  .gap-chart-count { flex:0 0 30px; text-align:right; font-size:11.5px; color:#475569; }
+
+  /* ── 進入點：左邊建立新環境／選擇已有環境（垂直排列，約佔 1/3 寬），右邊上方是
+     程式碼來源（上傳／GitHub／AI／空白），下方是選擇測試——三塊用灰線分隔。────── */
+  .test-entry-wrap { flex:1; display:flex; align-items:center; justify-content:center; min-height:560px; padding:20px; }
+  .entry-columns { display:flex; align-items:stretch; width:100%; max-width:880px; }
+  .entry-left {
+    flex:0 0 33%; max-width:320px; display:flex; flex-direction:column; justify-content:center;
+    gap:14px; padding:24px 28px 24px 8px; border-right:1px solid var(--line);
+  }
+  .entry-right { flex:1; min-width:0; display:flex; flex-direction:column; padding-left:32px; }
+  .entry-right-top, .entry-right-bottom {
+    flex:1; display:flex; flex-direction:column; justify-content:center; padding:20px 0;
+  }
+  .entry-right-top { border-bottom:1px solid var(--line); }
+  .entry-section-title { font-size:12px; font-weight:700; color:var(--sub); margin-bottom:14px; text-transform:uppercase; letter-spacing:.05em; }
+  /* 固定 4 欄：選項湊滿 4 個時剛好一排（程式碼來源現在正好 4 個），超過 4 個
+     才會換到下一排；只有 1 個選項（目前的 MC/DC）時也只佔 4 欄裡的 1 欄，
+     不會被拉伸撐滿一整排。 */
+  .entry-tile-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+  .entry-tile {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 10px;
+    cursor:pointer; transition:.15s; color:var(--ink); font-size:12.5px; font-weight:600;
+  }
+  .entry-tile-lg { flex-direction:row; justify-content:flex-start; padding:20px 18px; font-size:13.5px; gap:14px; }
+  .entry-tile svg { width:28px; height:28px; color:#94a3b8; transition:.15s; flex-shrink:0; }
+  .entry-tile-lg svg { width:26px; height:26px; }
+  .entry-tile:hover { border-color:var(--brand); box-shadow:0 4px 14px rgba(var(--brand-rgb),.14); }
+  .entry-tile:hover svg { color:var(--brand); }
+  .entry-tile.active { border-color:var(--brand); background:var(--brand-tint); color:var(--brand-dark); }
+  .entry-tile.active svg { color:var(--brand); }
+  .entry-tile:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
+  /* 「程式碼來源」四按鈕 ↔ 環境選擇器：同一塊版面切換用的動畫，跟步驟卡片的
+     stepCardIn 同一種手法（淡入＋輕微位移），不用額外套件。 */
+  #entry-source-grid.entry-swap-anim, #env-picker.entry-swap-anim { animation: entrySwapIn .28s cubic-bezier(.4,0,.2,1); }
+  @keyframes entrySwapIn {
+    from { opacity:0; transform:translateY(6px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  #env-picker { max-width:360px; }
+
+  /* ── 版本分頁：左邊 git-log 風格的時間軸，右邊顯示點到的那個版本跟上一版的差異。
+     用 brand color 畫提交點跟連接線，呼應「像 git」的要求。────────────────────── */
+  .versions-layout { display:flex; gap:24px; align-items:flex-start; height:100%; }
+  .versions-timeline-col { flex:0 0 260px; overflow-y:auto; max-height:100%; }
+  .versions-diff-col { flex:1; min-width:0; overflow-y:auto; max-height:100%; }
+  .version-row { display:flex; gap:10px; padding:6px 4px; cursor:pointer; border-radius:8px; }
+  .version-row:hover { background:#f8fafc; }
+  .version-row.active { background:var(--brand-tint); }
+  .version-dot-col { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:12px; padding-top:3px; }
+  .version-dot { width:9px; height:9px; border-radius:50%; background:var(--brand); border:2px solid var(--brand); flex-shrink:0; }
+  .version-dot-head { background:#fff; }
+  .version-line { width:2px; flex:1; min-height:18px; background:var(--line); margin-top:2px; }
+  .version-hash { font-size:12px; font-weight:600; color:var(--ink); }
+  .version-info { min-width:0; padding-bottom:14px; }
+
+  /* ── 覆蓋率趨勢折線圖：純 SVG，單一序列不需要圖例，用 brand color 畫線＋資料點 ── */
+  #coverage-trend-chart { margin:6px 0 18px; }
+  #coverage-trend-chart svg { display:block; }
+  .trend-dot-hit { cursor:pointer; }
+
+  /* ── 步驟面板：右邊固定寬度側欄，上方 5 個小方塊指示器（置中、無數字），
+     一次只顯示目前步驟；整體高度跟程式碼區塊一致，底部才會對齊。 ── */
+  .step-panel { flex:0 0 400px; height:600px; display:flex; flex-direction:column; }
+  .step-indicators { display:flex; justify-content:center; gap:6px; margin-bottom:14px; flex-shrink:0; position:relative; z-index:2; }
+  .quick-switch-wrap { position:absolute; right:0; top:50%; transform:translateY(-50%); }
+  .step-dot {
+    width:10px; height:10px; padding:0; border-radius:3px; border:none; cursor:pointer;
+    background:#e2e8f0; transition:.15s;
+  }
+  .step-dot:hover:not(.active) { background:#cbd5e1; }
+  .step-dot.active { background:var(--brand); }
+
+  .step-content-frame {
+    flex:1; min-height:0; background:#fff; border-radius:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:hidden; position:relative;
+  }
+  .step-panel-body { display:none; height:100%; overflow-y:auto; padding:22px 24px; }
+  .step-panel-body.active { display:block; animation: stepCardIn .32s cubic-bezier(.4,0,.2,1); }
+  @keyframes stepCardIn {
+    from { opacity:0; transform:translateY(10px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  .step-panel-title { font-size:15px; font-weight:700; color:var(--ink); margin-bottom:16px; }
+
+  .step-title { font-size:15px; font-weight:700; margin-bottom:14px; }
+  label.lbl { display:block; font-size:12px; color:var(--sub); margin-bottom:4px; font-weight:600; }
+  textarea, input, select {
+    width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+    font-size:13px; outline:none; transition:.15s; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  textarea:focus, input:focus, select:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(var(--brand-rgb),.15); }
+  .upload-label { text-align:center; }
+  .import-section { margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+  .hint { font-size:12px; color:var(--sub); margin-top:6px; }
+  .row { display:flex; gap:12px; align-items:flex-end; margin-top:12px; }
+  .row > * { flex:1; }
+  .btn { padding:10px 20px; border-radius:9px; font-size:13px; font-weight:600; border:none; cursor:pointer; transition:.15s; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-primary { background:var(--brand); color:var(--brand-ink); }
+  .btn-primary:hover:not(:disabled) { background:var(--brand-dark); }
+  .btn-ghost { background:#f1f5f9; color:#475569; }
+  .btn-ghost:hover:not(:disabled) { background:#e2e8f0; }
+  .btn-text-icon {
+    display:inline-flex; align-items:center; justify-content:flex-end; gap:5px; border:none;
+    background:transparent; color:var(--brand); font-size:12.5px; font-weight:700; cursor:pointer;
+    padding:4px 8px; border-radius:6px; white-space:nowrap;
+  }
+  .btn-text-icon:hover:not(:disabled) { color:#d57c98; }
+  .btn-text-icon:disabled { opacity:.5; cursor:not-allowed; }
+  .warning { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:10px 12px; font-size:12.5px; margin-top:12px; }
+  .error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:8px; padding:10px 12px; font-size:12.5px; margin-top:12px; }
+  .success-msg { background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; border-radius:8px; padding:10px 12px; font-size:12.5px; margin-top:6px; }
+  .summary-line { font-size:13px; color:var(--sub); margin-bottom:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  th { text-align:left; padding:7px 8px; color:#94a3b8; font-size:11.5px; font-weight:600; border-bottom:1px solid var(--line); }
+  td { padding:6px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; overflow:hidden; }
+  td input, td select { padding:6px 8px; font-size:12.5px; }
+  /* 參數設定表：欄寬固定，不會被參數名稱或下拉選單文字擠壓變形 */
+  #param-table { table-layout:fixed; }
+  #param-table td code { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; max-width:100%; vertical-align:middle; }
+  .func-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .func-tab { padding:6px 14px; border-radius:999px; font-size:12.5px; border:1px solid var(--line); background:#f8fafc; cursor:pointer; }
+  .func-tab.active { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .pbar-bg { background:#e2e8f0; border-radius:99px; height:10px; overflow:hidden; }
+  .pbar { background:var(--brand); height:100%; border-radius:99px; transition:width .3s; width:0%; }
+  .pbar.indeterminate { width:35% !important; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left:0%; } 50% { margin-left:60%; } 100% { margin-left:0%; } }
+  #progress-text { font-size:13px; color:var(--sub); margin-top:10px; }
+  .headline { font-size:15px; font-weight:700; margin-bottom:14px; }
+  .headline.ok { color:var(--ok); } .headline.warn { color:var(--pending); }
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px; }
+  .stat { background:#f8fafc; border-radius:10px; padding:12px; text-align:center; }
+  .stat-num { font-size:20px; font-weight:700; color:var(--brand); }
+  .stat-label { font-size:11.5px; color:var(--sub); margin-top:2px; }
+  details { margin-top:16px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  summary { cursor:pointer; padding:10px 14px; font-size:13px; font-weight:600; background:#f8fafc; color:#475569; }
+  pre { margin:0; padding:14px; font-size:11.5px; line-height:1.5; overflow:auto; max-height:420px; background:#0f172a; color:#e2e8f0; }
+  /* 側欄寬度固定，記錄／原始資料裡的長 JSON 一行不能用橫向捲動撐開版面，改成自動換行 */
+  #progress-console, #advanced-json { white-space:pre-wrap; word-break:break-all; overflow-x:hidden; overflow-y:auto; }
+  #progress-console { max-height:220px; }
+  .bool-badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; background:var(--brand-tint); color:var(--brand-dark); }
+
+  .status-badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .status-succeeded { background:#dcfce7; color:#16a34a; }
+  .status-failed { background:#fee2e2; color:#dc2626; }
+  .status-cancelled { background:#f1f5f9; color:#64748b; }
+  .status-running, .status-queued { background:#fef3c7; color:#b45309; }
+
+  #library-table tbody tr:hover td { background:#fafafa; }
+  .empty-row td { color:var(--sub); text-align:center; padding:24px 0 !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">myNSN</div>
+    <div style="height:1px; background:var(--line); margin:0 0 14px;"></div>
+
+    <button class="side-item active" data-page="test" onclick="goToTestHome()">
+      <span class="side-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6"/><path d="M9 12l2 2 4-4"/></svg></span>
+      軟體測試
+    </button>
+    <button class="side-item" data-page="library" onclick="switchPage('library')">
+      <span class="side-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+      程式庫
+    </button>
+    <button class="side-item" data-page="settings" onclick="switchPage('settings')">
+      <span class="side-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2"/></svg></span>
+      設定
+    </button>
+
+    <div class="sidebar-footer">
+      <div class="account-wrap" id="account-wrap">
+        <button id="btn-account" class="account-item">
+          <span id="account-avatar" class="avatar-placeholder"></span>
+          <span class="github-mark" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></span>
+          <span id="account-label" class="account-label">登入</span>
+        </button>
+
+        <!-- 未登入：選擇平台 -->
+        <div id="provider-popup" class="gh-login-panel hidden">
+          <div class="lbl" style="margin-bottom:10px;">選擇要登入的平台</div>
+          <button id="btn-choose-github" class="btn btn-ghost" style="width:100%; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub
+          </button>
+          <button class="btn btn-ghost account-item-disabled" style="width:100%;" disabled>GitLab</button>
+        </div>
+
+        <!-- GitHub 登入彈出視窗處理中 -->
+        <div id="gh-connecting-panel" class="gh-login-panel hidden">
+          <div id="gh-device-status" class="hint" style="text-align:center;">已在彈出視窗開啟 GitHub 登入，請在該視窗完成授權…</div>
+          <div id="gh-device-error" class="error hidden" style="margin-top:8px;"></div>
+        </div>
+
+        <!-- 已登入：登出選單 -->
+        <div id="account-menu" class="gh-login-panel hidden" style="width:160px; padding:6px;">
+          <button id="btn-gh-disconnect" class="menu-item">登出</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+  <section id="page-test" class="page active">
+
+  <!-- 進入點：先選測試類型＋建立新環境／選擇已有環境，選完才會看到編輯器跟操作側欄——
+       未來要加其他種類的測試（目前只有 MC/DC），都從這裡分岔，不會一進頁面就看到
+       一個空的程式碼編輯器。 -->
+  <div class="test-entry-wrap" id="test-entry-screen">
+   <div class="entry-columns">
+    <div class="entry-left">
+      <button type="button" class="entry-tile entry-tile-lg active" id="btn-landing-new">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span>建立新環境</span>
+      </button>
+      <button type="button" class="entry-tile entry-tile-lg" id="btn-landing-existing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>選擇已有環境</span>
+      </button>
+    </div>
+
+    <div class="entry-right">
+      <div class="entry-right-top">
+        <div class="entry-section-title" id="entry-right-top-title">程式碼來源</div>
+        <!-- 兩者互斥顯示：預設是來源四按鈕；點左邊「選擇已有環境」後，這裡動畫
+             切換成環境選擇器，不再各自佔一塊版面。 -->
+        <div class="entry-tile-grid" id="entry-source-grid">
+          <button type="button" class="entry-tile" id="btn-entry-upload">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>上傳檔案</span>
+          </button>
+          <button type="button" class="entry-tile" id="btn-entry-github">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span>GitHub 匯入</span>
+          </button>
+          <button type="button" class="entry-tile" id="btn-entry-ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>AI 生成</span>
+          </button>
+          <button type="button" class="entry-tile" id="btn-entry-blank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span>空白</span>
+          </button>
+        </div>
+        <div id="env-picker" class="hidden">
+          <div class="row" style="margin-top:0;">
+            <select id="env-picker-select"></select>
+            <button id="btn-env-picker-open" class="btn btn-primary" style="flex:0 0 auto;">開啟</button>
+          </div>
+          <div id="env-picker-error" class="error hidden" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="entry-right-bottom">
+        <div class="entry-section-title">選擇測試</div>
+        <div class="entry-tile-grid" id="test-type-tabs">
+          <button type="button" class="entry-tile active" data-test-type="mcdc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span>MC/DC</span>
+          </button>
+        </div>
+      </div>
+    </div>
+   </div>
+  </div>
+
+  <div class="test-layout hidden" id="test-layout">
+
+  <div class="code-panel">
+    <div class="code-panel-header">
+      <div class="code-tabs">
+        <button class="code-tab active" id="code-tab-edit" onclick="switchCodeTab('edit')">原始碼</button>
+        <button class="code-tab hidden" id="code-tab-locked" onclick="switchCodeTab('locked')">已鎖定</button>
+        <button class="code-tab hidden" id="code-tab-versions" onclick="switchCodeTab('versions')">版本</button>
+        <button class="code-tab hidden" id="code-tab-report" onclick="switchCodeTab('report')">測試報告</button>
+      </div>
+      <div class="code-header-actions">
+        <button id="btn-import-toggle" type="button" class="icon-btn" onclick="toggleImportPopover()" aria-label="匯入程式碼" title="匯入程式碼">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
+        <div id="import-popover" class="import-popover hidden">
+          <div class="func-tabs">
+            <button id="btn-mode-upload" type="button" class="func-tab active">上傳檔案</button>
+            <button id="btn-mode-github" type="button" class="func-tab">GitHub 匯入</button>
+            <button id="btn-mode-ai" type="button" class="func-tab">AI 生成</button>
+          </div>
+
+          <div id="import-upload-panel" class="import-panel">
+            <input id="source-file" type="file" accept=".py,text/x-python" class="hidden" />
+            <label for="source-file" class="btn btn-ghost upload-label" style="display:inline-block; width:auto;">選擇 .py 檔案</label>
+            <span id="import-upload-filename" class="hint" style="margin:0 0 0 10px; display:inline;"></span>
+          </div>
+
+          <div id="import-github-panel" class="import-panel hidden">
+            <div id="gh-not-connected" class="hint">尚未連接 GitHub，請先在左下角登入。</div>
+            <div id="gh-browse" class="hidden">
+              <div class="row" style="margin-top:0;">
+                <div>
+                  <label class="lbl">Repository</label>
+                  <select id="gh-repo"><option value="">── 選擇 repo ──</option></select>
+                </div>
+                <div>
+                  <label class="lbl">分支</label>
+                  <select id="gh-branch" disabled><option value="">── 先選 repo ──</option></select>
+                </div>
+              </div>
+              <div class="row" style="margin-top:10px;">
+                <div>
+                  <label class="lbl">.py 檔案</label>
+                  <select id="gh-file" disabled><option value="">── 先選分支 ──</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="import-ai-panel" class="import-panel hidden">
+            <label class="lbl">用自然語言描述你想測試的邏輯</label>
+            <textarea id="ai-description" rows="3" placeholder="例：判斷病患是否符合疫苗接種資格，條件：年齡≥65或高風險成人，且距上次接種>180天，且無蛋白過敏"></textarea>
+
+            <div id="ai-no-provider" class="warning hidden" style="margin-top:10px;">
+              尚未在「設定」頁面填任何 AI 供應商的金鑰。
+              <button type="button" class="btn btn-ghost" onclick="switchPage('settings')" style="width:auto; display:inline-block; margin-top:8px;">前往設定 →</button>
+            </div>
+
+            <div id="ai-picker" class="hidden">
+              <div id="ai-active-label" class="hint" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+              <button id="btn-ai-generate" class="btn btn-ghost" style="width:100%;">生成程式碼</button>
+            </div>
+          </div>
+
+          <!-- 上傳／GitHub／AI 生成都直接把整份內容塞進程式碼框，不再另外挑函式——
+               要測哪個函式，統一在左邊「分析程式碼」那一步的下拉選單挑。 -->
+          <div id="import-filename" class="hint"></div>
+          <div id="import-error" class="error hidden" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="code-editor-wrap" id="code-pane-edit">
+      <div id="code-linenos" class="code-linenos">1</div>
+      <div class="code-editor-area">
+        <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
+        <textarea id="source-code" class="code-editor" wrap="off" placeholder="def is_eligible(age, high_risk, days_since_last, egg_allergy):&#10;    if (age >= 65 or high_risk) and days_since_last > 180 and not egg_allergy:&#10;        return True&#10;    return False" spellcheck="false"></textarea>
+      </div>
+    </div>
+    <div class="code-editor-wrap hidden" id="code-pane-locked">
+      <div id="code-linenos-locked" class="code-linenos">1</div>
+      <div class="code-editor-area">
+        <pre id="code-highlight-locked" class="code-highlight" aria-hidden="true"></pre>
+        <div id="func-highlight-locked" class="func-highlight" aria-hidden="true"></div>
+        <textarea id="source-code-locked" class="code-editor" wrap="off" readonly spellcheck="false"></textarea>
+      </div>
+    </div>
+    <div class="report-pane hidden" id="code-pane-versions">
+      <div class="versions-layout">
+        <div class="versions-timeline-col">
+          <div class="report-section-title" style="margin-top:0;">版本歷程</div>
+          <div id="versions-timeline"></div>
+        </div>
+        <div class="versions-diff-col">
+          <div class="report-section-title" style="margin-top:0;">與上一版的差異</div>
+          <div id="versions-diff-area"></div>
+        </div>
+      </div>
+    </div>
+    <div class="report-pane hidden" id="code-pane-report">
+      <div class="row" id="report-run-picker-row" style="margin-top:0; align-items:center; gap:8px;">
+        <label class="lbl" style="margin:0; flex:0 0 auto;">執行紀錄</label>
+        <select id="report-run-picker" style="flex:1;"></select>
+      </div>
+      <div class="report-section-title" style="margin-top:0;">覆蓋率趨勢</div>
+      <div id="coverage-trend-chart"></div>
+      <div id="report-content"></div>
+    </div>
+  </div>
+
+  <div class="step-panel">
+    <div class="step-indicators" id="step-indicators">
+      <button class="step-dot" data-step="1" onclick="maybeGoToStep(1)" aria-label="步驟 1"></button>
+      <button class="step-dot" data-step="2" onclick="maybeGoToStep(2)" aria-label="步驟 2"></button>
+      <button class="step-dot" data-step="3" onclick="maybeGoToStep(3)" aria-label="步驟 3"></button>
+      <button class="step-dot" data-step="4" onclick="maybeGoToStep(4)" aria-label="步驟 4"></button>
+      <button class="step-dot" data-step="5" onclick="maybeGoToStep(5)" aria-label="步驟 5"></button>
+
+      <!-- 快速切換測試類型——目前只有 MC/DC 這一種，先把入口搭好，之後加新測試類型
+           不用再改版面結構。 -->
+      <div class="quick-switch-wrap">
+        <button type="button" id="btn-quick-switch-test" class="icon-btn" onclick="toggleQuickSwitchMenu()" aria-label="切換測試類型" title="切換測試類型">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7.5 7.5"/><path d="M3 21l7.5-7.5"/></svg>
+        </button>
+        <div id="quick-switch-menu" class="import-popover hidden" style="left:auto; right:0; width:190px; padding:8px;">
+          <div class="lbl" style="margin:2px 6px 8px;">測試類型</div>
+          <button type="button" class="menu-item" style="color:var(--brand); font-weight:700;" disabled>MC/DC</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-content-frame" id="stepper">
+
+    <!-- Step 1：分析程式碼＋選函式（進到這裡代表已經在進入點選過環境／測試類型了） -->
+    <div class="step-panel-body" id="step-source" data-step="1">
+      <div class="step-panel-title">分析程式碼</div>
+      <div class="row" style="margin-top:0;">
+        <button id="btn-analyze" class="btn btn-ghost">分析程式碼</button>
+      </div>
+      <div id="analyze-error" class="error" style="display:none;"></div>
+
+      <!-- 分析成功後才出現：挑選要測試的目標函式 -->
+      <div id="step1-func-picker" class="hidden" style="margin-top:18px;">
+        <label class="lbl">選擇要測試的函式</label>
+        <select id="func-select"></select>
+        <div id="analyze-warning" class="warning" style="display:none;"></div>
+        <div id="summary-line" class="summary-line"></div>
+        <div class="row" style="margin-top:16px;">
+          <button id="btn-to-config" class="btn btn-primary">下一步 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2：確認測試對象 -->
+    <div class="step-panel-body" id="step-config" data-step="2">
+      <div class="step-panel-title">確認測試對象</div>
+        <div id="step2-target-label" class="hint" style="margin-top:0;"></div>
+        <div id="free-vars-warning" class="warning hidden"></div>
+        <br>
+        <label class="lbl">情境說明</label>
+        <textarea id="domain-context" rows="2" placeholder="例：這是流感疫苗接種資格判斷，age 是病患年齡，日期單位是天"></textarea>
+
+        <div class="row" style="margin-top:14px; align-items:center; gap:8px; justify-content:space-between;">
+          <label class="lbl" style="margin:0;">參數設定</label>
+          <button id="btn-suggest-params" type="button" class="btn-text-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            AI 生成
+          </button>
+        </div>
+        <div id="suggest-params-error" class="error hidden" style="margin-top:6px;"></div>
+        <table id="param-table">
+          <colgroup>
+            <col style="width:24%">
+            <col style="width:26%">
+            <col style="width:22%">
+            <col style="width:22%">
+            <col style="width:32px">
+          </colgroup>
+          <thead><tr><th>參數</th><th>型別</th><th>最小值</th><th>最大值</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row" style="margin-top:10px; justify-content:flex-start;">
+          <button type="button" id="btn-add-param" class="btn-text-icon" style="margin:0;">＋ 手動新增變數</button>
+        </div>
+
+        <div class="row">
+          <button id="btn-to-llm" class="btn btn-primary">下一步：選擇 AI 模型 →</button>
+          <button id="btn-back-source" class="btn btn-ghost" style="flex:0 0 auto;">← 上一步</button>
+        </div>
+    </div>
+
+    <!-- Step 3：LLM 設定 -->
+    <div class="step-panel-body" id="step-llm" data-step="3">
+      <div class="step-panel-title">選擇 AI 模型</div>
+        <div id="llm-no-provider" class="warning hidden">
+          尚未在「設定」頁面填任何 AI 供應商的金鑰。
+          <button type="button" class="btn btn-ghost" onclick="switchPage('settings')" style="width:auto; display:inline-block; margin-top:8px;">前往設定 →</button>
+        </div>
+
+        <div id="llm-picker" class="hidden">
+          <div id="llm-active-label" class="hint" style="margin-top:0;"></div>
+          <div id="llm-engine-warning" class="warning hidden">
+            目前引擎不支援「目前使用的 AI」選到的這個供應商，沒辦法拿來實際產生測試，請到「設定」頁面換一個。
+            <button type="button" class="btn btn-ghost" onclick="switchPage('settings')" style="width:auto; display:inline-block; margin-top:8px;">前往設定 →</button>
+          </div>
+        </div>
+
+        <label class="lbl" style="margin-top:20px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="use-mock" style="width:auto;" />
+          使用測試模型（不呼叫 AI，直接顯示假資料，快速預覽介面）
+        </label>
+
+        <div class="row" style="margin-top:16px;">
+          <button id="btn-generate" class="btn btn-primary">開始生成測試 →</button>
+          <button id="btn-back-config" class="btn btn-ghost" style="flex:0 0 auto;">← 上一步</button>
+        </div>
+        <div id="generate-error" class="error" style="display:none;"></div>
+    </div>
+
+    <!-- Step 4：進度 -->
+    <div class="step-panel-body" id="step-progress" data-step="4">
+      <div class="step-panel-title">生成中</div>
+        <div class="pbar-bg"><div id="pbar" class="pbar indeterminate"></div></div>
+        <div id="progress-text">引擎啟動中…</div>
+        <div class="row">
+          <button id="btn-cancel" class="btn btn-ghost">← 取消並返回上一步</button>
+        </div>
+
+        <details id="progress-console-details">
+          <summary>詳細記錄</summary>
+          <pre id="progress-console"></pre>
+        </details>
+    </div>
+
+    <!-- Step 5：結果 -->
+    <div class="step-panel-body" id="step-result" data-step="5">
+      <div class="step-panel-title">結果</div>
+        <div id="result-headline" class="headline"></div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-num" id="stat-coverage">-</div><div class="stat-label">MC/DC 覆蓋率</div></div>
+          <div class="stat"><div class="stat-num" id="stat-cases">-</div><div class="stat-label">測試案例數</div></div>
+          <div class="stat"><div class="stat-num" id="stat-iters">-</div><div class="stat-label">迭代次數</div></div>
+        </div>
+
+        <label class="lbl">產生的測試資料</label>
+        <table id="cases-table"><thead></thead><tbody></tbody></table>
+
+        <details id="advanced">
+          <summary>進階技術細節（覆蓋矩陣、缺口分析、探針紀錄等原始資料）</summary>
+          <pre id="advanced-json"></pre>
+        </details>
+
+        <div class="row">
+          <button id="btn-back-result" class="btn btn-ghost">← 上一步</button>
+          <button id="btn-restart" class="btn btn-ghost">重新開始</button>
+        </div>
+    </div>
+
+    </div><!-- /step-content-frame -->
+  </div><!-- /step-panel -->
+
+  </div><!-- /test-layout -->
+  </section><!-- /page-test -->
+
+  <!-- ═══════════════════════ 程式庫 ═══════════════════════ -->
+  <section id="page-library" class="page">
+    <div class="history-panel">
+      <div class="row" style="margin-top:0; align-items:center; justify-content:space-between;">
+        <div class="step-title" style="margin:0;">程式庫</div>
+        <button id="btn-new-environment" class="btn btn-primary" style="flex:0 0 auto;">＋ 建立新環境</button>
+      </div>
+      <table id="library-table">
+        <thead><tr><th>名稱</th><th>函式</th><th>語言</th><th>最新執行</th><th>更新時間</th><th></th></tr></thead>
+        <tbody><tr class="empty-row"><td colspan="6">載入中…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ 設定 ═══════════════════════ -->
+  <section id="page-settings" class="page">
+    <div class="history-panel" style="max-width:560px;">
+      <div class="step-title">設定</div>
+
+      <div class="settings-block">
+        <label class="lbl">OpenAI API 金鑰</label>
+        <div class="row" style="margin-top:0;">
+          <input id="settings-openai-key" type="password" placeholder="sk-..." />
+          <button type="button" id="btn-test-openai" class="btn btn-ghost" style="flex:0 0 auto;">測試連線</button>
+        </div>
+        <div id="test-openai-result" class="hint"></div>
+      </div>
+
+      <div class="settings-block" style="margin-top:20px;">
+        <label class="lbl">Anthropic API 金鑰</label>
+        <div class="row" style="margin-top:0;">
+          <input id="settings-anthropic-key" type="password" placeholder="sk-ant-..." />
+          <button type="button" id="btn-test-anthropic" class="btn btn-ghost" style="flex:0 0 auto;">測試連線</button>
+        </div>
+        <div id="test-anthropic-result" class="hint"></div>
+      </div>
+
+      <div class="settings-block" style="margin-top:20px;">
+        <label class="lbl">Groq API 金鑰</label>
+        <div class="row" style="margin-top:0;">
+          <input id="settings-groq-key" type="password" placeholder="gsk_..." />
+          <button type="button" id="btn-test-groq" class="btn btn-ghost" style="flex:0 0 auto;">測試連線</button>
+        </div>
+        <div id="test-groq-result" class="hint"></div>
+      </div>
+
+      <div class="settings-block" style="margin-top:20px;">
+        <label class="lbl">Ollama 位址（本機）</label>
+        <div class="row" style="margin-top:0;">
+          <input id="settings-ollama-url" value="http://localhost:11434" />
+          <button type="button" id="btn-test-ollama" class="btn btn-ghost" style="flex:0 0 auto;">測試連線</button>
+        </div>
+        <div id="test-ollama-result" class="hint"></div>
+      </div>
+
+      <div class="settings-block" style="margin-top:20px; padding-top:20px; border-top:1px solid var(--line);">
+        <label class="lbl">目前使用的 AI</label>
+        <div id="active-llm-none" class="hint hidden">先在上面填至少一組金鑰／位址，這裡才能選。</div>
+        <div id="active-llm-fields" class="row hidden" style="margin-top:8px;">
+          <div>
+            <label class="lbl">供應商</label>
+            <select id="active-llm-provider"></select>
+          </div>
+          <div>
+            <label class="lbl">模型名稱</label>
+            <input id="active-llm-model" />
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:20px; align-items:center;">
+        <button id="btn-settings-save" class="btn btn-primary" style="flex:0 0 auto;">儲存設定</button>
+        <span id="settings-saved-msg" class="hint hidden" style="margin:0;">已儲存設定</span>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div><!-- /layout -->
+</div><!-- /app -->
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+let analyzeResult = null;
+let selectedFuncIdx = 0;
+let currentJobId = null;
+let ws = null;
+let currentStep = 1;
+// 目前作用中的環境／執行紀錄——建立新環境或從程式庫開啟既有環境後才會有值，
+// 用來判斷常駐報告分頁要不要顯示、送出測試時要建立環境還是更新既有環境。
+let currentEnvId = null;
+let currentRunId = null;
+
+function show(id) { $(id).classList.remove('hidden'); }
+function hide(id) { $(id).classList.add('hidden'); }
+
+// ── 程式碼編輯框：行數欄 + 語法上色 ───────────────────────────────────────
+// 純 textarea 沒有行數也沒有顏色。行數欄跟編輯區並排、捲動同步；上色則是把
+// textarea 文字設透明、只留游標，底下疊一層寫著上色後 HTML 的唯讀 <pre>，
+// 兩層用同樣的 padding／字型對齊，捲動位置也用 JS 同步（標準的「透明
+// textarea 疊在 <pre> 上」土炮做法，不需要額外套件或 CDN）。
+// .value 是用程式改的（上傳／GitHub／AI 生成都直接指定），不會觸發 input
+// 事件，所以任何地方要改內容都要走 setSourceCode()，不要直接改 .value。
+const PY_KEYWORDS = new Set([
+  'False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await', 'break',
+  'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally',
+  'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal',
+  'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield',
+]);
+
+// 型別註解常見的內建型別／函式名稱（int、bool、str... 這些不是關鍵字，是一般
+// 識別字，語法上跟自訂函式名沒兩樣，所以要另外列出來才會有顏色）。
+const PY_BUILTINS = new Set([
+  'int', 'float', 'bool', 'str', 'list', 'dict', 'tuple', 'set', 'frozenset',
+  'bytes', 'complex', 'len', 'range', 'print', 'type', 'isinstance',
+  'enumerate', 'zip', 'map', 'filter', 'sorted', 'sum', 'min', 'max', 'abs',
+  'round', 'open', 'super', 'object', 'self',
+]);
+
+// 運算子／特殊符號：兩個字元的要放在前面優先比對，才不會被拆成兩個單字元符號
+// （例如 -> 要整個吃掉，不能先吃掉 - 再吃掉 >）。
+const PY_OPERATORS_2 = ['->', '==', '!=', '<=', '>=', '**', '//', '+=', '-=', '*=', '/=', ':='];
+const PY_OPERATORS_1 = '+-*/%=<>:';
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 簡易 Python 詞法上色：逐字元掃描字串／註解／數字／關鍵字／裝飾器，其餘照原樣
+// 輸出。只是編輯器上色用，不追求完整語法解析，也完全不影響送到後端的原始碼。
+function highlightPython(code, emphasizeNames) {
+  const out = [];
+  let i = 0;
+  const n = code.length;
+  while (i < n) {
+    const ch = code[i];
+    if (ch === '#') {
+      let j = i;
+      while (j < n && code[j] !== '\n') j++;
+      out.push(`<span class="tok-comment">${escapeHtml(code.slice(i, j))}</span>`);
+      i = j;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      const triple = code.slice(i, i + 3) === ch.repeat(3);
+      const quote = triple ? ch.repeat(3) : ch;
+      let j = i + quote.length;
+      while (j < n) {
+        if (code[j] === '\\') { j += 2; continue; }
+        if (code.slice(j, j + quote.length) === quote) { j += quote.length; break; }
+        j++;
+      }
+      out.push(`<span class="tok-string">${escapeHtml(code.slice(i, j))}</span>`);
+      i = j;
+      continue;
+    }
+    if (ch === '@' && (i === 0 || code[i - 1] === '\n')) {
+      let j = i;
+      while (j < n && code[j] !== '\n') j++;
+      out.push(`<span class="tok-decorator">${escapeHtml(code.slice(i, j))}</span>`);
+      i = j;
+      continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      let j = i;
+      while (j < n && /[0-9a-fA-Fx.jJeE_]/.test(code[j])) j++;
+      out.push(`<span class="tok-number">${escapeHtml(code.slice(i, j))}</span>`);
+      i = j;
+      continue;
+    }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_]/.test(code[j])) j++;
+      const word = code.slice(i, j);
+      if (PY_KEYWORDS.has(word)) {
+        out.push(`<span class="tok-keyword">${word}</span>`);
+      } else if (PY_BUILTINS.has(word)) {
+        out.push(`<span class="tok-builtin">${word}</span>`);
+      } else if (emphasizeNames && emphasizeNames.has(word)) {
+        out.push(`<span class="tok-param">${word}</span>`);
+      } else {
+        out.push(word);
+      }
+      i = j;
+      continue;
+    }
+    const two = code.slice(i, i + 2);
+    if (PY_OPERATORS_2.includes(two)) {
+      out.push(`<span class="tok-op">${escapeHtml(two)}</span>`);
+      i += 2;
+      continue;
+    }
+    if (PY_OPERATORS_1.includes(ch)) {
+      out.push(`<span class="tok-op">${escapeHtml(ch)}</span>`);
+      i++;
+      continue;
+    }
+    out.push(escapeHtml(ch));
+    i++;
+  }
+  return out.join('');
+}
+
+function updateCodeLineNumbers() {
+  const lineCount = $('source-code').value.split('\n').length;
+  const nums = [];
+  for (let i = 1; i <= lineCount; i++) nums.push(i);
+  $('code-linenos').textContent = nums.join('\n');
+}
+
+function updateCodeHighlight() {
+  $('code-highlight').innerHTML = highlightPython($('source-code').value) + '\n';
+}
+
+function refreshCodeEditor() {
+  updateCodeLineNumbers();
+  updateCodeHighlight();
+}
+
+function syncCodeScroll() {
+  const top = $('source-code').scrollTop;
+  $('code-linenos').scrollTop = top;
+  $('code-highlight').scrollTop = top;
+  $('code-highlight').scrollLeft = $('source-code').scrollLeft;
+}
+
+function setSourceCode(value) {
+  $('source-code').value = value;
+  refreshCodeEditor();
+  $('source-code').scrollTop = 0;
+  $('source-code').scrollLeft = 0;
+  syncCodeScroll();
+}
+
+$('source-code').addEventListener('input', refreshCodeEditor);
+$('source-code').addEventListener('scroll', syncCodeScroll);
+refreshCodeEditor();
+
+// ── Tab 鍵縮排 ───────────────────────────────────────────────────────────
+// 陽春 textarea 預設按 Tab 只會跳到下一個欄位。這裡攔截成一般 IDE 的行為：
+// 沒有選取範圍就在游標插入 4 個空白；有選取（可能跨多行）則整段一起縮排，
+// Shift+Tab 退縮排。setRangeText 是標準 API，改完手動 dispatch input 事件，
+// 讓既有的行數／上色／即時偵測邏輯照常觸發。
+$('source-code').addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  e.preventDefault();
+  const ta = e.target;
+  const { selectionStart: start, selectionEnd: end, value } = ta;
+  const multiLine = value.slice(start, end).includes('\n');
+
+  if (!e.shiftKey && !multiLine) {
+    ta.setRangeText('    ', start, end, 'end');
+  } else {
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    let lineEnd = end === start ? value.indexOf('\n', end) : value.indexOf('\n', end - 1);
+    if (lineEnd === -1) lineEnd = value.length;
+    const lines = value.slice(lineStart, lineEnd).split('\n');
+    let firstLineDelta = 0;
+    const newLines = lines.map((line, i) => {
+      if (e.shiftKey) {
+        const removed = line.match(/^( {1,4}|\t)/);
+        if (i === 0) firstLineDelta = removed ? -removed[0].length : 0;
+        return removed ? line.slice(removed[0].length) : line;
+      }
+      if (i === 0) firstLineDelta = 4;
+      return '    ' + line;
+    });
+    const newBlock = newLines.join('\n');
+    ta.setRangeText(newBlock, lineStart, lineEnd, 'select');
+    ta.selectionStart = Math.max(lineStart, start + firstLineDelta);
+    ta.selectionEnd = lineStart + newBlock.length;
+  }
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+// ── 原始碼區塊：「原始碼」／「已鎖定」兩個分頁 ─────────────────────────────
+// 「原始碼」永遠可以改，但送出分析（進到第 2 步）之後，設定畫面顯示的函式／
+// 條件都是當下那份程式碼的分析結果——如果使用者接著又在編輯框裡改東西，
+// 側欄卻不會跟著變，兩邊就會對不上。「已鎖定」分頁固定顯示「送出分析當下」
+// 那份唯讀快照，讓使用者清楚知道現在整個流程用的是哪一版，原始碼分頁則可以
+// 繼續自由修改、準備下一次分析。
+let lockedSourceCode = null;
+let codeTab = 'edit';
+
+function switchCodeTab(tab) {
+  codeTab = tab;
+  $('code-tab-edit').classList.toggle('active', tab === 'edit');
+  $('code-tab-locked').classList.toggle('active', tab === 'locked');
+  $('code-tab-versions').classList.toggle('active', tab === 'versions');
+  $('code-tab-report').classList.toggle('active', tab === 'report');
+  $('code-pane-edit').classList.toggle('hidden', tab !== 'edit');
+  $('code-pane-locked').classList.toggle('hidden', tab !== 'locked');
+  $('code-pane-versions').classList.toggle('hidden', tab !== 'versions');
+  $('code-pane-report').classList.toggle('hidden', tab !== 'report');
+}
+
+// ── 匯入懸浮框：上傳／GitHub／AI 生成收在程式碼框標題列的 SVG 按鈕後面 ─────────
+function toggleImportPopover(forceOpen) {
+  const pop = $('import-popover');
+  const willOpen = forceOpen !== undefined ? forceOpen : pop.classList.contains('hidden');
+  pop.classList.toggle('hidden', !willOpen);
+  $('btn-import-toggle').classList.toggle('active', willOpen);
+}
+document.addEventListener('click', (e) => {
+  const pop = $('import-popover');
+  if (pop.classList.contains('hidden')) return;
+  if (pop.contains(e.target) || $('btn-import-toggle').contains(e.target)) return;
+  toggleImportPopover(false);
+});
+
+// ── 步驟指示器右側：快速切換測試類型選單（目前只有 MC/DC，先把入口搭好）───────
+function toggleQuickSwitchMenu(forceOpen) {
+  const menu = $('quick-switch-menu');
+  const willOpen = forceOpen !== undefined ? forceOpen : menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !willOpen);
+}
+document.addEventListener('click', (e) => {
+  const menu = $('quick-switch-menu');
+  if (menu.classList.contains('hidden')) return;
+  if (menu.contains(e.target) || $('btn-quick-switch-test').contains(e.target)) return;
+  toggleQuickSwitchMenu(false);
+});
+
+function updateLockedCodeLineNumbers() {
+  const lineCount = $('source-code-locked').value.split('\n').length;
+  const nums = [];
+  for (let i = 1; i <= lineCount; i++) nums.push(i);
+  $('code-linenos-locked').textContent = nums.join('\n');
+}
+
+// 目前選到的函式有哪些參數名稱——選函式之後，鎖定分頁的程式碼裡凡是出現這些
+// 名稱的識別字都會額外標注出來，跟第 2 步的參數設定表對照著看。
+function getCurrentParamNames() {
+  if (!analyzeResult) return null;
+  const fn = analyzeResult.functions[selectedFuncIdx];
+  return fn ? new Set(Object.keys(fn.param_types)) : null;
+}
+
+function refreshLockedCodeEditor() {
+  updateLockedCodeLineNumbers();
+  $('code-highlight-locked').innerHTML = highlightPython($('source-code-locked').value, getCurrentParamNames()) + '\n';
+}
+
+function lockCurrentSourceCode(source) {
+  lockedSourceCode = source;
+  $('source-code-locked').value = source;
+  refreshLockedCodeEditor();
+  lockedHighlightRange = null;
+  $('func-highlight-locked').innerHTML = '';
+  $('source-code-locked').scrollTop = 0;
+  $('source-code-locked').scrollLeft = 0;
+  $('code-tab-locked').classList.remove('hidden');
+  // 重新分析了，上一輪的測試報告（如果有）已經是舊資料，先收起來，
+  // 等這一輪真的生成完成再重新出現。
+  $('code-tab-report').classList.add('hidden');
+  switchCodeTab('locked');
+}
+
+function setLockedScrollTop(top) {
+  $('source-code-locked').scrollTop = top;
+  $('code-linenos-locked').scrollTop = top;
+  $('code-highlight-locked').scrollTop = top;
+}
+
+$('source-code-locked').addEventListener('scroll', () => {
+  setLockedScrollTop($('source-code-locked').scrollTop);
+  $('code-highlight-locked').scrollLeft = $('source-code-locked').scrollLeft;
+  repositionLockedHighlightBand();
+});
+
+// ── 選函式時，在鎖定分頁把整個函式所在範圍標記出來、捲動過去 ────────────────
+// 行號範圍純前端用縮排規則猜（頂層 def 開始，到下一個頂層 def/class/裝飾器
+// 前一行結束），只是給使用者看的視覺輔助；真正切函式送給引擎分析是後端用
+// ast 做的（suggest.extract_function_source），跟這裡的猜測互不影響。
+let lockedHighlightRange = null; // { start, end }：目前標記的函式所在行號範圍（0-indexed）
+
+// 行高／上邊距一律從實際算好的樣式讀，不要寫死數字——字型／樣式以後改了才不會
+// 又跑掉一行。
+function getLockedCodeMetrics() {
+  const cs = getComputedStyle($('code-highlight-locked'));
+  return { lineHeight: parseFloat(cs.lineHeight), paddingTop: parseFloat(cs.paddingTop) };
+}
+
+function findFunctionLineRange(source, funcName) {
+  const lines = source.split('\n');
+  const escaped = funcName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const defRe = new RegExp(`^def\\s+${escaped}\\s*\\(`);
+  let defLine = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (defRe.test(lines[i])) { defLine = i; break; }
+  }
+  if (defLine === -1) return null;
+  let start = defLine;
+  while (start > 0 && /^@/.test(lines[start - 1])) start--;
+  // 邊界搜尋一定要從「真正的 def 那行」下一行開始找，不能從（可能已經往前跳過
+  // 裝飾器的）start 下一行找——不然 start+1 會剛好又指回 def 這行本身，這行
+  // 本身就符合「下一個函式開始」的判斷式，導致範圍整個縮成只剩裝飾器那一行。
+  let end = lines.length - 1;
+  for (let i = defLine + 1; i < lines.length; i++) {
+    if (/^(def |class |@)/.test(lines[i])) { end = i - 1; break; }
+  }
+  while (end > start && lines[end].trim() === '') end--;
+  return { start, end };
+}
+
+// 這個標記層自己沒有可捲動的內容（band 是 position:absolute，不會撐開
+// scrollHeight），所以不能靠設它的 scrollTop 來跟著捲動——改成每次捲動都
+// 用「目前 textarea 的 scrollTop」重新算 band 應該畫在哪，band 位置＝
+// 文件座標減掉目前捲動量，直接跟著 textarea 的捲動狀態走。
+function repositionLockedHighlightBand() {
+  const layer = $('func-highlight-locked');
+  if (!lockedHighlightRange) {
+    layer.innerHTML = '';
+    return;
+  }
+  let band = layer.querySelector('.band');
+  if (!band) {
+    band = document.createElement('div');
+    band.className = 'band';
+    layer.innerHTML = '';
+    layer.appendChild(band);
+  }
+  const { lineHeight, paddingTop } = getLockedCodeMetrics();
+  const scrollTop = $('source-code-locked').scrollTop;
+  band.style.top = `${paddingTop + lockedHighlightRange.start * lineHeight - scrollTop}px`;
+  band.style.height = `${(lockedHighlightRange.end - lockedHighlightRange.start + 1) * lineHeight}px`;
+}
+
+function highlightLockedFunction(funcName) {
+  lockedHighlightRange = findFunctionLineRange($('source-code-locked').value, funcName);
+  if (!lockedHighlightRange) {
+    $('func-highlight-locked').innerHTML = '';
+    return;
+  }
+  const { lineHeight, paddingTop } = getLockedCodeMetrics();
+  const ta = $('source-code-locked');
+  const targetTop = paddingTop + lockedHighlightRange.start * lineHeight;
+  setLockedScrollTop(Math.max(0, targetTop - ta.clientHeight / 3));
+  repositionLockedHighlightBand();
+}
+
+// ── 設定：各家 AI 供應商的金鑰／位址＋目前使用的 AI，都存在瀏覽器 localStorage ──
+// 供應商金鑰只管「有沒有填」；實際要用哪個供應商、哪個模型是「目前使用的 AI」
+// 這一個全域設定決定的，Step 3／AI 生成程式碼／AI 建議參數三個地方共用同一個
+// 選擇，不會各自分開選。
+const PROVIDER_CREDS_KEY = 'mcdc_lite_provider_creds';
+const LLM_PROVIDER_LABELS = { openai: 'OpenAI', anthropic: 'Anthropic', groq: 'Groq', ollama: 'Ollama（本機）' };
+const LLM_DEFAULT_MODELS = {
+  openai: 'gpt-4.1-mini',
+  anthropic: 'claude-3-5-haiku-20241022',
+  groq: 'llama-3.3-70b-versatile',
+  ollama: 'llama3',
+};
+const LLM_PROVIDER_ORDER = ['openai', 'anthropic', 'groq', 'ollama'];
+// 引擎（ifl_api／ifl_mcdc）目前支援的供應商——如果以後 mcdc_lite 這邊比引擎先加了
+// 新供應商，先把新的名字留在這個清單外面，Step 3 就會自動擋下來、顯示提示，
+// 不會讓使用者送出一個引擎根本不認得的 provider。
+const ENGINE_SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'groq', 'ollama'];
+
+function loadProviderCreds() {
+  const defaults = {
+    openai: { api_key: '' },
+    anthropic: { api_key: '' },
+    groq: { api_key: '' },
+    ollama: { base_url: 'http://localhost:11434' },
+  };
+  try {
+    const raw = localStorage.getItem(PROVIDER_CREDS_KEY);
+    // 用 Object.assign 跟舊版存檔（沒有 groq 欄位）合併，不然舊使用者升級後
+    // providerCreds.groq 會是 undefined，一讀 .api_key 就整頁掛掉。
+    if (raw) return Object.assign(defaults, JSON.parse(raw));
+  } catch (err) { /* localStorage 不可用或內容壞掉，用預設值 */ }
+  return defaults;
+}
+
+let providerCreds = loadProviderCreds();
+
+function saveProviderCreds() {
+  try { localStorage.setItem(PROVIDER_CREDS_KEY, JSON.stringify(providerCreds)); } catch (err) { /* 忽略 */ }
+}
+
+function isProviderConfigured(provider) {
+  if (provider === 'ollama') return !!(providerCreds.ollama.base_url || '').trim();
+  return !!(providerCreds[provider].api_key || '').trim();
+}
+
+function availableProviders() {
+  return LLM_PROVIDER_ORDER.filter(isProviderConfigured);
+}
+
+function buildLlmPayload(provider, model) {
+  return {
+    provider,
+    model,
+    base_url: providerCreds.ollama.base_url || '',
+    api_key: provider === 'ollama' ? '' : (providerCreds[provider].api_key || ''),
+  };
+}
+
+// ── 目前使用的 AI：全域單一選擇，Step 3／AI 生成程式碼／AI 建議參數都讀這一個 ──
+const ACTIVE_LLM_KEY = 'mcdc_lite_active_llm';
+
+function loadActiveLlm() {
+  try {
+    const raw = localStorage.getItem(ACTIVE_LLM_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (err) { /* 忽略，用預設值 */ }
+  return { provider: '', model: '' };
+}
+
+let activeLlm = loadActiveLlm();
+
+function saveActiveLlm() {
+  try { localStorage.setItem(ACTIVE_LLM_KEY, JSON.stringify(activeLlm)); } catch (err) { /* 忽略 */ }
+}
+
+// 回傳目前實際可用的 AI；如果先前選的供應商金鑰後來被清掉了，自動退回第一個
+// 還有設定的供應商，不會讓整個功能卡死。沒有任何供應商設定好時回傳 null。
+function getActiveLlm() {
+  const providers = availableProviders();
+  if (!providers.length) return null;
+  const provider = providers.includes(activeLlm.provider) ? activeLlm.provider : providers[0];
+  const model = (provider === activeLlm.provider && activeLlm.model)
+    ? activeLlm.model
+    : (LLM_DEFAULT_MODELS[provider] || '');
+  return { provider, model };
+}
+
+// 設定頁的「目前使用的 AI」選單──用「表單目前打的內容」判斷有哪些供應商可選
+// （不是已存檔的 providerCreds），這樣使用者剛打完一組新金鑰、還沒按儲存，
+// 選單也會馬上跟著更新，不用先存一次才看得到。
+function formIsProviderConfigured(provider) {
+  if (provider === 'ollama') return !!$('settings-ollama-url').value.trim();
+  const fieldId = { openai: 'settings-openai-key', anthropic: 'settings-anthropic-key', groq: 'settings-groq-key' }[provider];
+  return !!$(fieldId).value.trim();
+}
+
+function populateActiveLlmPicker() {
+  const providers = LLM_PROVIDER_ORDER.filter(formIsProviderConfigured);
+  const sel = $('active-llm-provider');
+  const prevValue = sel.value;
+  sel.innerHTML = '';
+  providers.forEach((p) => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = LLM_PROVIDER_LABELS[p];
+    sel.appendChild(opt);
+  });
+  const hasAny = providers.length > 0;
+  $('active-llm-none').classList.toggle('hidden', hasAny);
+  $('active-llm-fields').classList.toggle('hidden', !hasAny);
+  if (!hasAny) return;
+  // 選單重填後盡量保留原本選到的供應商（如果它還在清單裡），第一次填表時
+  // 才用已存檔的 activeLlm 當預設值。
+  if (providers.includes(prevValue)) {
+    sel.value = prevValue;
+  } else if (providers.includes(activeLlm.provider)) {
+    sel.value = activeLlm.provider;
+    $('active-llm-model').value = activeLlm.model || LLM_DEFAULT_MODELS[activeLlm.provider] || '';
+    return;
+  }
+  if (!$('active-llm-model').value.trim()) {
+    $('active-llm-model').value = LLM_DEFAULT_MODELS[sel.value] || '';
+  }
+}
+$('active-llm-provider').onchange = () => {
+  $('active-llm-model').value = LLM_DEFAULT_MODELS[$('active-llm-provider').value] || '';
+};
+['settings-openai-key', 'settings-anthropic-key', 'settings-groq-key', 'settings-ollama-url'].forEach((id) => {
+  $(id).addEventListener('input', populateActiveLlmPicker);
+});
+
+// Step 3／AI 生成程式碼那兩個地方不再各自選供應商，只顯示「目前使用的 AI」是誰。
+function refreshLlmDisplays() {
+  const active = getActiveLlm();
+  [
+    { labelId: 'llm-active-label', noProviderId: 'llm-no-provider', pickerId: 'llm-picker', engineOnly: true },
+    { labelId: 'ai-active-label', noProviderId: 'ai-no-provider', pickerId: 'ai-picker', engineOnly: false },
+  ].forEach(({ labelId, noProviderId, pickerId, engineOnly }) => {
+    $(noProviderId).classList.toggle('hidden', !!active);
+    $(pickerId).classList.toggle('hidden', !active);
+    if (!active) return;
+    $(labelId).textContent = `使用中：${LLM_PROVIDER_LABELS[active.provider]} · ${active.model}`;
+    if (engineOnly) {
+      const supported = ENGINE_SUPPORTED_PROVIDERS.includes(active.provider);
+      $('llm-engine-warning').classList.toggle('hidden', supported);
+      $('btn-generate').disabled = !supported;
+    }
+  });
+}
+
+function fillSettingsForm() {
+  $('settings-openai-key').value = providerCreds.openai.api_key || '';
+  $('settings-anthropic-key').value = providerCreds.anthropic.api_key || '';
+  $('settings-groq-key').value = providerCreds.groq.api_key || '';
+  $('settings-ollama-url').value = providerCreds.ollama.base_url || '';
+  populateActiveLlmPicker();
+}
+
+$('btn-settings-save').onclick = () => {
+  providerCreds = {
+    openai: { api_key: $('settings-openai-key').value.trim() },
+    anthropic: { api_key: $('settings-anthropic-key').value.trim() },
+    groq: { api_key: $('settings-groq-key').value.trim() },
+    ollama: { base_url: $('settings-ollama-url').value.trim() },
+  };
+  saveProviderCreds();
+  populateActiveLlmPicker();
+  if (!$('active-llm-fields').classList.contains('hidden')) {
+    activeLlm = {
+      provider: $('active-llm-provider').value,
+      model: $('active-llm-model').value.trim(),
+    };
+    saveActiveLlm();
+  }
+  refreshLlmDisplays();
+  show('settings-saved-msg');
+  setTimeout(() => hide('settings-saved-msg'), 2000);
+};
+
+// ── 設定頁：測試連線 ───────────────────────────────────────────────────
+async function testConnection(provider, apiKey, baseUrl, resultElId, btnEl) {
+  const resultEl = $(resultElId);
+  resultEl.className = 'hint';
+  resultEl.textContent = '測試中…';
+  btnEl.disabled = true;
+  try {
+    const resp = await fetch('/api/test-llm-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl }),
+    });
+    const data = await resp.json();
+    resultEl.textContent = data.message;
+    resultEl.className = data.ok ? 'success-msg' : 'error';
+  } catch (err) {
+    resultEl.textContent = `測試失敗：${err.message}`;
+    resultEl.className = 'error';
+  } finally {
+    btnEl.disabled = false;
+  }
+}
+
+$('btn-test-openai').onclick = () =>
+  testConnection('openai', $('settings-openai-key').value.trim(), '', 'test-openai-result', $('btn-test-openai'));
+$('btn-test-anthropic').onclick = () =>
+  testConnection('anthropic', $('settings-anthropic-key').value.trim(), '', 'test-anthropic-result', $('btn-test-anthropic'));
+$('btn-test-groq').onclick = () =>
+  testConnection('groq', $('settings-groq-key').value.trim(), '', 'test-groq-result', $('btn-test-groq'));
+$('btn-test-ollama').onclick = () =>
+  testConnection('ollama', '', $('settings-ollama-url').value.trim(), 'test-ollama-result', $('btn-test-ollama'));
+
+fillSettingsForm();
+refreshLlmDisplays();
+
+// ── 側欄分頁切換 ─────────────────────────────────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach((el) => el.classList.remove('active'));
+  document.querySelectorAll('.side-item').forEach((el) => el.classList.remove('active'));
+  $('page-' + name).classList.add('active');
+  document.querySelector(`.side-item[data-page="${name}"]`).classList.add('active');
+  if (name === 'library') loadLibrary();
+}
+
+// 側欄「軟體測試」一定要跳回最初的儀表板（選環境／測試類型那頁）——跟
+// switchPage('test') 分開一個函式，是因為 switchPage 也被 openEnvironment／
+// 「＋建立新環境」等內部流程呼叫，那些情況不能被這裡的 resetAll 蓋掉。
+function goToTestHome() {
+  switchPage('test');
+  resetAll();
+}
+
+// ── 水平步驟區塊：展開目前步驟，其餘收合成窄欄 ───────────────────────────
+function renderStepper() {
+  document.querySelectorAll('.step-dot').forEach((el) => {
+    el.classList.toggle('active', Number(el.dataset.step) === currentStep);
+  });
+  document.querySelectorAll('.step-panel-body').forEach((el) => {
+    el.classList.toggle('active', Number(el.dataset.step) === currentStep);
+  });
+}
+
+function goToStep(n) {
+  currentStep = n;
+  renderStepper();
+}
+
+function maybeGoToStep(n) {
+  // 指示器本身就是獨立的按鈕（不再是包住整張卡片的 onclick），點卡片內其他
+  // 表單元件不會冒泡到這裡，不用再攔截事件來源。
+  if (n < currentStep) goToStep(n);
+}
+
+renderStepper();
+
+// ── Step 1：匯入模式切換（上傳檔案 / GitHub / AI 生成）─────────────────────
+// 三種模式都只負責把內容整份塞進程式碼框，不再各自挑函式——要測哪個函式，
+// 統一在左側「分析程式碼」那一步的下拉選單挑，跟程式碼是怎麼進到編輯框的無關。
+let importMode = 'upload';
+let ghCurrentFile = null; // { fullName, branch, path }：目前 GitHub 選到的檔案，只用來顯示標籤
+
+function importShowError(msg) {
+  $('import-error').textContent = msg;
+  $('import-error').classList.toggle('hidden', !msg);
+}
+
+function setImportMode(mode) {
+  importMode = mode;
+  $('btn-mode-upload').classList.toggle('active', mode === 'upload');
+  $('btn-mode-github').classList.toggle('active', mode === 'github');
+  $('btn-mode-ai').classList.toggle('active', mode === 'ai');
+  $('import-upload-panel').classList.toggle('hidden', mode !== 'upload');
+  $('import-github-panel').classList.toggle('hidden', mode !== 'github');
+  $('import-ai-panel').classList.toggle('hidden', mode !== 'ai');
+  importShowError('');
+}
+$('btn-mode-upload').onclick = () => setImportMode('upload');
+$('btn-mode-github').onclick = () => setImportMode('github');
+$('btn-mode-ai').onclick = () => setImportMode('ai');
+
+// ── Step 1：上傳檔案 ─────────────────────────────────────────────────────
+$('source-file').onchange = async () => {
+  const file = $('source-file').files[0];
+  if (!file) return;
+  importShowError('');
+  try {
+    const text = await file.text();
+    $('import-upload-filename').textContent = file.name;
+    setSourceCode(text);
+    $('import-filename').textContent = `已載入：${file.name}`;
+    toggleImportPopover(false);
+  } catch (err) {
+    importShowError(`讀取檔案失敗：${err.message}`);
+  }
+};
+
+// ── Step 1：AI 生成（自然語言 → 程式碼），供應商金鑰統一在左側「設定」頁管理 ──
+$('btn-ai-generate').onclick = async () => {
+  const description = $('ai-description').value.trim();
+  importShowError('');
+  if (!description) { importShowError('請輸入描述'); return; }
+  const active = getActiveLlm();
+  if (!active) {
+    importShowError('尚未設定任何 AI 供應商，請先到左側「設定」頁面設定');
+    return;
+  }
+
+  $('btn-ai-generate').disabled = true;
+  $('btn-ai-generate').textContent = '生成中…';
+  try {
+    const resp = await fetch('/api/generate-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, llm: buildLlmPayload(active.provider, active.model) }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'AI 生成失敗');
+    // AI 一定只生一個函式（system prompt 就是這樣要求的），不用像上傳／GitHub 那樣
+    // 還要挑函式，生完直接進程式碼框。
+    setSourceCode(data.source_code);
+    $('import-filename').textContent = '已載入：AI 生成的程式碼';
+    toggleImportPopover(false);
+  } catch (err) {
+    importShowError(err.message);
+  } finally {
+    $('btn-ai-generate').disabled = false;
+    $('btn-ai-generate').textContent = '生成程式碼';
+  }
+};
+
+// ── 側欄帳號：GitHub 登入（跳出視窗走 GitHub 標準 OAuth 授權） ─────────────
+let githubToken = '';
+let githubUser = null;
+let ghRepoMap = {}; // full_name -> { owner, name, default_branch }
+let ghOAuthPopup = null;
+let ghPopupWatcher = null;
+
+function ghShowDeviceError(msg) {
+  $('gh-device-error').textContent = msg;
+  $('gh-device-error').classList.toggle('hidden', !msg);
+}
+
+async function ghFetch(path) {
+  const resp = await fetch(path, { headers: { 'X-GitHub-Token': githubToken } });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+  return data;
+}
+
+function closeAllAccountPanels() {
+  hide('provider-popup');
+  hide('gh-connecting-panel');
+  hide('account-menu');
+}
+
+$('btn-account').onclick = () => {
+  const panelId = githubToken ? 'account-menu' : 'provider-popup';
+  const willShow = $(panelId).classList.contains('hidden');
+  closeAllAccountPanels();
+  if (willShow) show(panelId);
+};
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.account-wrap')) return;
+  if (ghOAuthPopup && !ghOAuthPopup.closed) return; // 登入視窗開著時，不要因為點外面就把狀態面板關掉
+  closeAllAccountPanels();
+});
+
+function updateAccountUI() {
+  if (githubUser) {
+    $('account-avatar').style.backgroundImage = `url(${githubUser.avatar_url})`;
+    $('account-avatar').classList.add('avatar-connected');
+    $('account-label').textContent = githubUser.login;
+  } else {
+    $('account-avatar').style.backgroundImage = '';
+    $('account-avatar').classList.remove('avatar-connected');
+    $('account-label').textContent = '登入';
+  }
+}
+
+$('btn-choose-github').onclick = () => {
+  hide('provider-popup');
+  show('gh-connecting-panel');
+  ghShowDeviceError('');
+  $('gh-device-status').textContent = '已在彈出視窗開啟 GitHub 登入，請在該視窗完成授權…';
+
+  const w = 520, h = 680;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top = window.screenY + (window.outerHeight - h) / 2;
+  ghOAuthPopup = window.open(
+    '/api/github/oauth/login', 'gh-oauth-login',
+    `width=${w},height=${h},left=${left},top=${top}`
+  );
+
+  if (!ghOAuthPopup) {
+    $('gh-device-status').textContent = '';
+    ghShowDeviceError('瀏覽器擋住了彈出視窗，請允許本頁面的彈出視窗後再試一次');
+    return;
+  }
+
+  clearInterval(ghPopupWatcher);
+  ghPopupWatcher = setInterval(() => {
+    if (ghOAuthPopup && ghOAuthPopup.closed) {
+      clearInterval(ghPopupWatcher);
+      if (!githubToken) {
+        $('gh-device-status').textContent = '';
+        ghShowDeviceError('登入視窗已關閉，尚未完成授權');
+      }
+    }
+  }, 500);
+};
+
+window.addEventListener('message', async (e) => {
+  if (e.origin !== window.location.origin) return;
+  const msg = e.data || {};
+  if (msg.type === 'github-oauth-success') {
+    clearInterval(ghPopupWatcher);
+    githubToken = msg.token;
+    githubUser = msg.user;
+    updateAccountUI();
+    closeAllAccountPanels();
+    hide('gh-not-connected');
+    show('gh-browse');
+    setImportMode('github');
+    await ghLoadRepos();
+  } else if (msg.type === 'github-oauth-error') {
+    clearInterval(ghPopupWatcher);
+    $('gh-device-status').textContent = '';
+    ghShowDeviceError(msg.error || '登入失敗');
+  }
+});
+
+async function ghLoadRepos() {
+  importShowError('');
+  try {
+    const repos = await ghFetch('/api/github/repos');
+    ghRepoMap = {};
+    const sel = $('gh-repo');
+    sel.innerHTML = '<option value="">── 選擇 repo ──</option>';
+    repos.forEach((r) => {
+      ghRepoMap[r.full_name] = r;
+      const opt = document.createElement('option');
+      opt.value = r.full_name;
+      opt.textContent = r.full_name + (r.private ? '（private）' : '');
+      sel.appendChild(opt);
+    });
+  } catch (err) {
+    importShowError(err.message);
+  }
+}
+
+$('btn-gh-disconnect').onclick = () => {
+  githubToken = '';
+  githubUser = null;
+  ghRepoMap = {};
+  ghCurrentFile = null;
+  updateAccountUI();
+  closeAllAccountPanels();
+  show('gh-not-connected');
+  hide('gh-browse');
+  importShowError('');
+  $('gh-repo').innerHTML = '<option value="">── 選擇 repo ──</option>';
+  $('gh-branch').innerHTML = '<option value="">── 先選 repo ──</option>';
+  $('gh-branch').disabled = true;
+  $('gh-file').innerHTML = '<option value="">── 先選分支 ──</option>';
+  $('gh-file').disabled = true;
+};
+
+$('gh-repo').onchange = async () => {
+  const fullName = $('gh-repo').value;
+  const branchSel = $('gh-branch');
+  const fileSel = $('gh-file');
+  branchSel.innerHTML = '<option value="">載入中…</option>';
+  branchSel.disabled = true;
+  fileSel.innerHTML = '<option value="">── 先選分支 ──</option>';
+  fileSel.disabled = true;
+  if (!fullName) {
+    branchSel.innerHTML = '<option value="">── 先選 repo ──</option>';
+    return;
+  }
+  const repo = ghRepoMap[fullName];
+  importShowError('');
+  try {
+    const branches = await ghFetch(`/api/github/repos/${repo.owner}/${repo.name}/branches`);
+    branchSel.innerHTML = '';
+    branches.forEach((b) => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      if (b === repo.default_branch) opt.selected = true;
+      branchSel.appendChild(opt);
+    });
+    branchSel.disabled = false;
+    branchSel.onchange();
+  } catch (err) {
+    importShowError(err.message);
+    branchSel.innerHTML = '<option value="">── 先選 repo ──</option>';
+  }
+};
+
+$('gh-branch').onchange = async () => {
+  const fullName = $('gh-repo').value;
+  const branch = $('gh-branch').value;
+  const fileSel = $('gh-file');
+  fileSel.innerHTML = '<option value="">載入中…</option>';
+  fileSel.disabled = true;
+  if (!fullName || !branch) return;
+  const repo = ghRepoMap[fullName];
+  importShowError('');
+  try {
+    const files = await ghFetch(`/api/github/repos/${repo.owner}/${repo.name}/files?branch=${encodeURIComponent(branch)}`);
+    fileSel.innerHTML = '<option value="">── 選擇檔案 ──</option>';
+    files.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      fileSel.appendChild(opt);
+    });
+    fileSel.disabled = files.length === 0;
+    if (files.length === 0) importShowError('這個分支裡找不到 .py 檔案');
+  } catch (err) {
+    importShowError(err.message);
+    fileSel.innerHTML = '<option value="">── 先選分支 ──</option>';
+  }
+};
+
+// 選了檔案就直接把內容整份塞進程式碼框——要測哪個函式，之後在「分析程式碼」
+// 那一步的下拉選單挑，這裡不用再另外選一次。
+$('gh-file').onchange = async () => {
+  const fullName = $('gh-repo').value;
+  const branch = $('gh-branch').value;
+  const path = $('gh-file').value;
+  importShowError('');
+  ghCurrentFile = null;
+  if (!path) return;
+  const repo = ghRepoMap[fullName];
+  try {
+    const fileData = await ghFetch(
+      `/api/github/repos/${repo.owner}/${repo.name}/content?path=${encodeURIComponent(path)}&branch=${encodeURIComponent(branch)}`
+    );
+    ghCurrentFile = { fullName, branch, path };
+    setSourceCode(fileData.content);
+    $('import-filename').textContent = `已載入：${fullName}@${branch}:${path}`;
+    toggleImportPopover(false);
+  } catch (err) {
+    importShowError(err.message);
+  }
+};
+
+// ── Step 1: 分析 ─────────────────────────────────────────────────────────
+$('btn-analyze').onclick = async () => {
+  const source = $('source-code').value.trim();
+  $('analyze-error').style.display = 'none';
+  if (!source) {
+    $('analyze-error').textContent = '請先貼上程式碼';
+    $('analyze-error').style.display = 'block';
+    return;
+  }
+  $('btn-analyze').disabled = true;
+  $('btn-analyze').textContent = '分析中…';
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_code: source }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '分析失敗');
+    analyzeResult = data;
+    selectedFuncIdx = 0;
+    lockCurrentSourceCode(source);
+    renderStep1FuncPicker();
+    renderConfigStep();
+    highlightLockedFunction(analyzeResult.functions[selectedFuncIdx].name);
+  } catch (err) {
+    $('analyze-error').textContent = err.message;
+    $('analyze-error').style.display = 'block';
+  } finally {
+    $('btn-analyze').disabled = false;
+    $('btn-analyze').textContent = '分析程式碼';
+  }
+};
+
+// Step 1：分析成功後，挑選要測試的目標函式（不管程式碼是打字、貼上還是匯入
+// 進來的，都是同一份分析結果——上傳／GitHub／AI 生成都只負責把內容塞進編輯框，
+// 不再各自挑函式）。挑選在這裡做一次，Step 2 只負責填參數設定。
+function renderStep1FuncPicker() {
+  const sel = $('func-select');
+  sel.innerHTML = '';
+  analyzeResult.functions.forEach((f, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+  sel.value = selectedFuncIdx;
+  sel.onchange = () => {
+    selectedFuncIdx = Number(sel.value);
+    renderConfigStep();
+    highlightLockedFunction(analyzeResult.functions[selectedFuncIdx].name);
+  };
+
+  if (analyzeResult.warning) {
+    $('analyze-warning').textContent = analyzeResult.warning;
+    $('analyze-warning').style.display = 'block';
+  } else {
+    $('analyze-warning').style.display = 'none';
+  }
+
+  $('summary-line').textContent =
+    `偵測到 ${analyzeResult.decision_count} 個判斷式，共 ${analyzeResult.condition_count} 個條件。`;
+
+  $('step1-func-picker').classList.remove('hidden');
+}
+
+// bounds → 布林限制下拉選單的選項值：[1,1] 固定「是」、[0,0] 固定「否」，其餘（含
+// 沒有 bounds）都是「不限制」——跟後端 domain_bounds 的 [1,1]/[0,0] 慣例一一對應。
+function boundsToBoolRestrict(bounds) {
+  if (bounds && bounds[0] === 1 && bounds[1] === 1) return 'true';
+  if (bounds && bounds[0] === 0 && bounds[1] === 0) return 'false';
+  return 'any';
+}
+
+function renderConfigStep() {
+  const fn = analyzeResult.functions[selectedFuncIdx];
+  $('step2-target-label').textContent = `測試對象：${fn.signature}`;
+  refreshLockedCodeEditor(); // 換函式了，鎖定分頁裡標注的參數名稱要跟著換
+  const tbody = $('param-table').querySelector('tbody');
+  tbody.innerHTML = '';
+  const freeVars = new Set(fn.free_vars || []);
+  Object.entries(fn.param_types).forEach(([name, typ]) => {
+    const bounds = fn.suggested_bounds[name] || [0, 100];
+    addParamRow({
+      name, typ, lo: bounds[0], hi: bounds[1],
+      boolRestrict: boundsToBoolRestrict(fn.suggested_bounds[name]),
+      nameEditable: false, isFreeVar: freeVars.has(name),
+    });
+  });
+}
+
+// ── 參數設定表：型別／最小值／最大值那兩格內容依型別而變 ──────────────────────
+// 數字（整數／浮點數）：一般文字輸入框（不是 type=number，不會有瀏覽器原生的
+// 上下箭頭），靠 input 事件即時過濾非法字元。
+// 布林：兩格合併成一個「是／否／不限制」下拉選單，對應到後端 domain_bounds 的
+// [1,1]／[0,0]／（不寫入）。
+function numericBoundCellsHTML(name, typ, lo, hi) {
+  const mode = typ === 'float' ? 'decimal' : 'numeric';
+  return `
+    <td><input data-param="${escapeHtml(name)}" class="param-min param-numeric" type="text" inputmode="${mode}" data-numtype="${typ}" value="${escapeHtml(String(lo))}" /></td>
+    <td><input data-param="${escapeHtml(name)}" class="param-max param-numeric" type="text" inputmode="${mode}" data-numtype="${typ}" value="${escapeHtml(String(hi))}" /></td>
+  `;
+}
+
+function boolRestrictCellHTML(name, boolRestrict) {
+  return `
+    <td colspan="2">
+      <select data-param="${escapeHtml(name)}" class="param-bool-restrict">
+        <option value="any" ${boolRestrict === 'any' ? 'selected' : ''}>不限制</option>
+        <option value="true" ${boolRestrict === 'true' ? 'selected' : ''}>是</option>
+        <option value="false" ${boolRestrict === 'false' ? 'selected' : ''}>否</option>
+      </select>
+    </td>
+  `;
+}
+
+// 過濾數字輸入框的內容：整數只准數字跟開頭的負號，浮點數額外准一個小數點。
+function filterNumericInput(el) {
+  const isFloat = el.dataset.numtype === 'float';
+  let v = el.value.replace(isFloat ? /[^0-9.-]/g : /[^0-9-]/g, '');
+  v = v.replace(/(?!^)-/g, ''); // 負號只能在最前面
+  if (isFloat) {
+    const parts = v.split('.');
+    if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+  }
+  if (v !== el.value) {
+    const pos = el.selectionStart - (el.value.length - v.length);
+    el.value = v;
+    el.setSelectionRange(Math.max(0, pos), Math.max(0, pos));
+  }
+}
+
+// 一列參數設定——分析自動找到的（nameEditable:false，名稱固定顯示）跟手動
+// 新增的（nameEditable:true，名稱是輸入框）共用同一套產生／收集邏輯：
+// collectParamState() 只看 .param-type 的 data-param，不管這一列是怎麼來的。
+function addParamRow({ name = '', typ = 'int', lo = 0, hi = 100, boolRestrict = 'any', nameEditable = true, isFreeVar = false } = {}) {
+  const tbody = $('param-table').querySelector('tbody');
+  const tr = document.createElement('tr');
+  tbody.appendChild(tr);
+  renderParamRowCells(tr, { name, typ, lo, hi, boolRestrict, nameEditable, isFreeVar });
+  if (nameEditable) tr.querySelector('.param-name-input').focus();
+  return tr;
+}
+
+// 重建整列的 <td>：型別下拉切換時（數字 ↔ 布林）欄位結構不一樣，直接整列重畫
+// 比較單純，不用另外處理「拆併儲存格」的 DOM 操作。
+function renderParamRowCells(tr, { name, typ, lo, hi, boolRestrict, nameEditable, isFreeVar }) {
+  const freeVarBadge = isFreeVar ? ' <span class="gap-status-badge uncovered" title="函式簽名沒有宣告這個參數">非參數</span>' : '';
+  const nameCell = nameEditable
+    ? `<input type="text" class="param-name-input" value="${escapeHtml(name)}" placeholder="變數名稱" />`
+    : `<code>${escapeHtml(name)}</code>${freeVarBadge}`;
+  const boundCells = typ === 'bool'
+    ? boolRestrictCellHTML(name, boolRestrict)
+    : numericBoundCellsHTML(name, typ, lo, hi);
+
+  tr.innerHTML = `
+    <td>${nameCell}</td>
+    <td>
+      <select data-param="${escapeHtml(name)}" class="param-type">
+        <option value="int" ${typ === 'int' ? 'selected' : ''}>整數</option>
+        <option value="bool" ${typ === 'bool' ? 'selected' : ''}>布林（是／否）</option>
+        <option value="float" ${typ === 'float' ? 'selected' : ''}>浮點數</option>
+      </select>
+    </td>
+    ${boundCells}
+    <td><button type="button" class="param-remove-btn" aria-label="刪除這個變數" title="刪除">×</button></td>
+  `;
+
+  const typeSel = tr.querySelector('.param-type');
+  typeSel.onchange = () => {
+    // 型別切換時邊界欄位重設為預設值（數字 ↔ 布林的邊界語意不同，沿用舊值沒有意義）
+    renderParamRowCells(tr, {
+      name: typeSel.dataset.param, typ: typeSel.value, lo: 0, hi: 100, boolRestrict: 'any',
+      nameEditable, isFreeVar,
+    });
+  };
+  tr.querySelectorAll('.param-numeric').forEach((el) => {
+    el.addEventListener('input', () => filterNumericInput(el));
+  });
+  if (nameEditable) {
+    const nameInput = tr.querySelector('.param-name-input');
+    nameInput.addEventListener('input', () => {
+      const v = nameInput.value.trim();
+      tr.querySelectorAll('[data-param]').forEach((el) => { el.dataset.param = v; });
+    });
+    nameInput.focus();
+  }
+  tr.querySelector('.param-remove-btn').onclick = () => tr.remove();
+}
+
+$('btn-add-param').onclick = () => addParamRow({ nameEditable: true });
+
+$('btn-to-config').onclick = () => goToStep(2);
+$('btn-back-source').onclick = () => goToStep(1);
+
+// ── Step 2：AI 建議參數型別／範圍 ─────────────────────────────────────────
+$('btn-suggest-params').onclick = async () => {
+  const errEl = $('suggest-params-error');
+  errEl.classList.add('hidden');
+  const active = getActiveLlm();
+  if (!active) {
+    errEl.textContent = '尚未設定任何 AI 供應商，請先到左側「設定」頁面設定';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const fn = analyzeResult.functions[selectedFuncIdx];
+  const btn = $('btn-suggest-params');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'AI 生成中…';
+  try {
+    const resp = await fetch('/api/suggest-params', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_code: $('source-code-locked').value,
+        func_name: fn.name,
+        llm: buildLlmPayload(active.provider, active.model),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'AI 建議失敗');
+
+    if (data.domain_context) $('domain-context').value = data.domain_context;
+    document.querySelectorAll('#param-table tbody tr').forEach((row) => {
+      const typeSel = row.querySelector('.param-type');
+      const name = typeSel.dataset.param;
+      const typ = data.domain_types[name] || typeSel.value;
+      const bounds = data.domain_bounds[name];
+      renderParamRowCells(row, {
+        name, typ,
+        lo: bounds ? bounds[0] : 0,
+        hi: bounds ? bounds[1] : 100,
+        boolRestrict: boundsToBoolRestrict(bounds),
+        nameEditable: !!row.querySelector('.param-name-input'),
+        isFreeVar: !!row.querySelector('.gap-status-badge'),
+      });
+    });
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+};
+
+// ── Step 2 → 3 ───────────────────────────────────────────────────────────
+$('btn-to-llm').onclick = () => goToStep(3);
+$('btn-back-config').onclick = () => goToStep(2);
+
+function collectParamState() {
+  const domain_types = {};
+  const domain_bounds = {};
+  document.querySelectorAll('#param-table tbody tr').forEach((row) => {
+    const name = row.querySelector('.param-type').dataset.param.trim();
+    if (!name) return; // 手動新增但還沒填名稱的空白列，不送出
+    const typ = row.querySelector('.param-type').value;
+    domain_types[name] = typ;
+    if (typ === 'bool') {
+      // 「不限制」不寫入 domain_bounds（維持現有「自由隨機」行為）；
+      // 「是」／「否」寫入 [1,1]／[0,0]，後端隨機生成、SMT 求解、驗證規則都吃這個慣例。
+      const restrict = row.querySelector('.param-bool-restrict').value;
+      if (restrict === 'true') domain_bounds[name] = [1, 1];
+      else if (restrict === 'false') domain_bounds[name] = [0, 0];
+    } else {
+      const lo = Number(row.querySelector('.param-min').value);
+      const hi = Number(row.querySelector('.param-max').value);
+      domain_bounds[name] = [lo, hi];
+    }
+  });
+  return { domain_types, domain_bounds };
+}
+
+// ── Step 3: 開始生成，供應商金鑰統一在左側「設定」頁管理 ─────────────────
+$('btn-generate').onclick = async () => {
+  $('generate-error').style.display = 'none';
+
+  if ($('use-mock').checked) {
+    loadMockResult();
+    return;
+  }
+
+  const active = getActiveLlm();
+  if (!active) {
+    $('generate-error').textContent = '尚未設定任何 AI 供應商，請先到左側「設定」頁面設定';
+    $('generate-error').style.display = 'block';
+    return;
+  }
+  if (!ENGINE_SUPPORTED_PROVIDERS.includes(active.provider)) {
+    $('generate-error').textContent = '目前引擎不支援「目前使用的 AI」選到的這個供應商，請到「設定」頁面換一個';
+    $('generate-error').style.display = 'block';
+    return;
+  }
+  const fn = analyzeResult.functions[selectedFuncIdx];
+  const { domain_types, domain_bounds } = collectParamState();
+  const sourceCode = $('source-code').value;
+  const domainContext = $('domain-context').value.trim();
+
+  $('btn-generate').disabled = true;
+  try {
+    // 每個環境都要有真正的持久化紀錄，才有「常駐報告」跟「執行歷程」可看——
+    // 第一次送出（還沒有 currentEnvId）就先建立環境；已經有環境的話，原始碼／
+    // 設定這次送出時可能又改過，先同步一次（可能因此多出一個新版本）。
+    if (!currentEnvId) {
+      const envResp = await fetch('/api/environments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fn.name,
+          source_code: sourceCode,
+          func_name: fn.name,
+          func_signature: fn.signature,
+          domain_context: domainContext,
+          domain_types,
+          domain_bounds,
+          test_type: selectedTestType,
+        }),
+      });
+      const envData = await envResp.json();
+      if (!envResp.ok) throw new Error(envData.detail || '建立環境失敗');
+      currentEnvId = envData.env_id;
+    } else {
+      const putResp = await fetch(`/api/environments/${currentEnvId}/source`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_code: sourceCode,
+          func_name: fn.name,
+          func_signature: fn.signature,
+          domain_context: domainContext,
+          domain_types,
+          domain_bounds,
+        }),
+      });
+      const putData = await putResp.json();
+      if (!putResp.ok) throw new Error(putData.detail || '更新環境失敗');
+    }
+
+    const resp = await fetch(`/api/environments/${currentEnvId}/runs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        max_iterations: 40,
+        llm: buildLlmPayload(active.provider, active.model),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+    currentJobId = data.ifl_job_id;
+    currentRunId = data.run_id;
+    await showPersistentReportForEnv(currentEnvId);
+    goToStep(4);
+    openStream(currentJobId);
+  } catch (err) {
+    $('generate-error').textContent = err.message;
+    $('generate-error').style.display = 'block';
+  } finally {
+    $('btn-generate').disabled = false;
+  }
+};
+
+// ── Step 4: 進度串流 ─────────────────────────────────────────────────────
+// 「詳細記錄」是給想看細節的人用的，預設收合、不影響新手看到的簡單畫面——
+// 每一筆從 WebSocket 收到的原始事件都照原樣記一行下去，跟瀏覽器 console 的
+// 感覺類似，方便對照時間序、抓問題。
+function logToConsole(line) {
+  const el = $('progress-console');
+  const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  el.textContent += `[${time}] ${line}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function openStream(jobId) {
+  $('progress-console').textContent = '';
+  $('progress-console-details').open = false;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/api/jobs/${jobId}/stream`);
+  ws.onmessage = (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { logToConsole(ev.data); return; }
+    logToConsole(JSON.stringify(msg));
+    if (msg.type === 'progress') {
+      // iteration/max_iterations 是「修正輪數」（跟後端主迴圈同一顆計數器，
+      // 一定 <= max_iterations）；test_case_count 是額外資訊，累計實際跑過幾組
+      // 測試（含一開始的隨機測試、單輪內的 true/false 配對），本來就會比
+      // max_iterations 多很多，兩者不能混在一起當「第 N 組（上限 M 組）」顯示。
+      const iter = msg.iteration || 0;
+      const max = msg.max_iterations || 0;
+      const testCount = msg.test_case_count || 0;
+      $('pbar').classList.remove('indeterminate');
+      $('pbar').style.width = max ? Math.min(100, Math.round((100 * iter) / max)) + '%' : '10%';
+      $('progress-text').textContent = iter > 0
+        ? `修正第 ${iter} 輪（上限 ${max} 輪）・已測試 ${testCount} 組…`
+        : `產生初始測試中…（已測試 ${testCount} 組）`;
+    } else if (msg.type === 'status') {
+      $('progress-text').textContent = '引擎啟動中…';
+    } else if (msg.type === 'done') {
+      if (msg.status === 'succeeded') {
+        loadResult(jobId);
+      } else {
+        showProgressError(`生成未完成：${msg.error || msg.status}`);
+      }
+    } else if (msg.type === 'error') {
+      showProgressError(msg.detail || '連線發生錯誤');
+    }
+  };
+  ws.onerror = () => {
+    logToConsole('WebSocket 連線發生錯誤');
+    showProgressError('與伺服器的連線中斷了，請重新開始');
+  };
+}
+
+function showProgressError(text) {
+  $('progress-text').textContent = text;
+  $('pbar').classList.remove('indeterminate');
+}
+
+$('btn-cancel').onclick = async () => {
+  if (currentJobId) {
+    await fetch(`/api/jobs/${currentJobId}`, { method: 'DELETE' }).catch(() => {});
+  }
+  if (ws) { ws.close(); ws = null; }
+  currentJobId = null;
+  $('pbar').classList.add('indeterminate');
+  $('pbar').style.width = '0%';
+  goToStep(3);
+};
+
+// ── Step 5: 結果 ─────────────────────────────────────────────────────────
+async function loadResult(jobId) {
+  const resp = await fetch(`/api/jobs/${jobId}/result`);
+  const data = await resp.json();
+  if (!resp.ok) {
+    showProgressError(data.detail || '取得結果失敗');
+    return;
+  }
+  goToStep(5);
+  renderRunData(data.summary, data.raw);
+  $('code-tab-report').classList.remove('hidden');
+  switchCodeTab('report'); // 到結果頁一定順便切到測試報告分頁，不用使用者自己再點一次
+  // 有作用中環境時，常駐報告分頁的執行紀錄選單也要跟著刷新——開始這次執行時
+  // 選單裡還是「running」，現在真的跑完了，要讓它換成這次的最終結果（列表裡
+  // 要出現這一筆）。refreshRunPicker 內部會再呼叫 loadRunIntoReport 把最新一筆
+  // 灌進去，這裡不會形成迴圈：loadRunIntoReport 只會呼叫 renderRunData，
+  // renderRunData 本身不會再去刷新選單。
+  if (currentEnvId) refreshRunPicker(currentEnvId);
+}
+
+// 共用的渲染邏輯：不管是剛跑完的新結果（loadResult）、切換到某次歷史紀錄
+// （loadRunIntoReport），還是假資料預覽（loadMockResult），右側 Step 5「結果」
+// 面板跟「測試報告」分頁看到的都要是同一份資料，不能各自為政、切歷史紀錄時
+// 只有報告分頁的缺口卡片換了、右側統計數字卻還停在舊的那次。
+function renderRunData(summary, raw) {
+  const headlineEl = $('result-headline');
+  headlineEl.textContent = summary.headline;
+  headlineEl.className = 'headline ' + (summary.converged ? 'ok' : 'warn');
+  $('stat-coverage').textContent = summary.coverage_pct + '%';
+  $('stat-cases').textContent = summary.test_case_count;
+  $('stat-iters').textContent = summary.iteration_count;
+
+  renderCasesTable(raw.test_suite || []);
+  $('advanced-json').textContent = JSON.stringify(raw, null, 2);
+
+  renderTestReport(raw);
+}
+
+// ── 測試報告分頁：逐一列出每個 MC/DC 缺口的覆蓋狀態，未覆蓋的可以叫 AI 猜
+// 原因；下面再畫一個長條圖，顯示每個缺口總共花了幾輪迭代（不是全域第幾輪，
+// 是「這個缺口從開始被嘗試到結束（成功或放棄）總共用掉幾次」）。────────────
+const GAP_STATUS_LABELS = {
+  covered: '已覆蓋',
+  infeasible: '結構性不可行',
+  gate_exhausted: '嘗試多次後放棄',
+  uncovered: '尚未嘗試',
+};
+
+function renderTestReport(raw) {
+  const gapMap = raw.gap_coverage_map || {};
+  const iterationDetails = raw.iteration_details || [];
+  const gaps = Object.entries(gapMap).map(([key, info]) => ({ key, ...info }));
+  gaps.sort((a, b) =>
+    (a.condition_id || '').localeCompare(b.condition_id || '') ||
+    (a.flip_direction || '').localeCompare(b.flip_direction || '')
+  );
+
+  // iteration_details 裡的 "gap" 記的是條件 ID（一輪迭代通常會同時處理該條件
+  // 的 True→False 跟 False→True 兩個方向），所以計數以條件 ID 為單位，
+  // 兩個方向的缺口圖表上會共用同一個數字。
+  const iterCountByCondition = {};
+  iterationDetails.forEach((d) => {
+    if (!d.gap) return;
+    iterCountByCondition[d.gap] = (iterCountByCondition[d.gap] || 0) + 1;
+  });
+
+  const container = $('report-content');
+  container.innerHTML = '';
+
+  const title1 = document.createElement('div');
+  title1.className = 'report-section-title';
+  title1.textContent = `缺口覆蓋明細（共 ${gaps.length} 組）`;
+  container.appendChild(title1);
+
+  gaps.forEach((gap) => {
+    const card = document.createElement('div');
+    card.className = 'gap-card';
+    const directionLabel = gap.flip_direction === 'T2F' ? 'True → False' : 'False → True';
+    const statusLabel = GAP_STATUS_LABELS[gap.status] || gap.status;
+
+    const head = document.createElement('div');
+    head.className = 'gap-card-head';
+    head.innerHTML =
+      `<span><span class="gap-expr">${escapeHtml(gap.condition_expr || gap.condition_id || '')}</span>` +
+      `<span class="gap-direction">${directionLabel}</span></span>` +
+      `<span class="gap-status-badge ${gap.status}">${statusLabel}</span>`;
+    card.appendChild(head);
+
+    if (gap.status === 'covered' && gap.test_case) {
+      const tc = document.createElement('div');
+      tc.className = 'gap-testcase';
+      const parts = Object.entries(gap.test_case).map(
+        ([k, v]) => `<code>${escapeHtml(k)}=${escapeHtml(String(v))}</code>`
+      );
+      tc.innerHTML = '由這組測試案例滿足：' + parts.join(' ');
+      card.appendChild(tc);
+    } else {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-text-icon';
+      btn.style.marginTop = '8px';
+      btn.innerHTML =
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 ' +
+        '12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> AI 建議';
+      btn.onclick = () => explainGap(gap, card, btn);
+      card.appendChild(btn);
+    }
+
+    container.appendChild(card);
+  });
+
+  const title2 = document.createElement('div');
+  title2.className = 'report-section-title';
+  title2.textContent = '各缺口花費的迭代次數';
+  container.appendChild(title2);
+
+  const hint = document.createElement('div');
+  hint.className = 'report-hint';
+  hint.textContent = '算的是引擎從開始嘗試這個缺口到結束（成功或放棄）總共用掉幾次迭代，不是全域跑到第幾輪。';
+  container.appendChild(hint);
+
+  const conditionIds = [...new Set(gaps.map((g) => g.condition_id).filter(Boolean))];
+  const exprByCondition = {};
+  gaps.forEach((g) => { exprByCondition[g.condition_id] = g.condition_expr; });
+  const maxCount = Math.max(1, ...conditionIds.map((cid) => iterCountByCondition[cid] || 0));
+
+  if (!conditionIds.some((cid) => iterCountByCondition[cid])) {
+    const empty = document.createElement('div');
+    empty.className = 'report-hint';
+    empty.style.margin = '0';
+    empty.textContent = '這次沒有任何缺口進到迭代修正階段（可能一開始的隨機測試就已經全部覆蓋）。';
+    container.appendChild(empty);
+  } else {
+    conditionIds.forEach((cid) => {
+      const count = iterCountByCondition[cid] || 0;
+      const label = exprByCondition[cid] || cid;
+      const row = document.createElement('div');
+      row.className = 'gap-chart-row';
+      row.innerHTML =
+        `<div class="gap-chart-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>` +
+        `<div class="gap-chart-bar-bg"><div class="gap-chart-bar" style="width:${Math.round((count / maxCount) * 100)}%"></div></div>` +
+        `<div class="gap-chart-count">${count}</div>`;
+      container.appendChild(row);
+    });
+  }
+}
+
+async function explainGap(gap, cardEl, btn) {
+  const active = getActiveLlm();
+  if (!active) {
+    const err = document.createElement('div');
+    err.className = 'error';
+    err.style.marginTop = '8px';
+    err.textContent = '尚未設定任何 AI 供應商，請先到左側「設定」頁面設定';
+    cardEl.appendChild(err);
+    return;
+  }
+  const fn = analyzeResult.functions[selectedFuncIdx];
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.textContent = '分析中…';
+  try {
+    const resp = await fetch('/api/explain-gap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_code: $('source-code-locked').value,
+        func_name: fn.name,
+        condition_expr: gap.condition_expr || gap.condition_id,
+        flip_direction: gap.flip_direction,
+        status: gap.status,
+        llm: buildLlmPayload(active.provider, active.model),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'AI 分析失敗');
+    const textEl = document.createElement('div');
+    textEl.className = 'gap-explain-text';
+    textEl.textContent = data.explanation;
+    cardEl.appendChild(textEl);
+    btn.remove();
+  } catch (err) {
+    const errEl = document.createElement('div');
+    errEl.className = 'error';
+    errEl.style.marginTop = '8px';
+    errEl.textContent = err.message;
+    cardEl.appendChild(errEl);
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+// ── 測試模型：不呼叫任何 API，直接產生一組假資料展示介面 ─────────────────
+function buildMockCase(domain_types) {
+  const c = {};
+  Object.entries(domain_types).forEach(([name, typ]) => {
+    if (typ === 'bool') c[name] = Math.random() < 0.5;
+    else if (typ === 'float') c[name] = Math.round(Math.random() * 10000) / 100;
+    else c[name] = Math.floor(Math.random() * 100);
+  });
+  return c;
+}
+
+function loadMockResult() {
+  const { domain_types } = collectParamState();
+  const testSuite = Array.from({ length: 6 }, (_, i) => ({
+    ...buildMockCase(domain_types),
+    __test_id: `Tmock${i}`,
+    __source: 'mock',
+  }));
+  const raw = {
+    job_id: 'mock-' + Date.now(),
+    converged: true,
+    final_coverage: 1.0,
+    test_suite: testSuite,
+    iteration_count: testSuite.length,
+    total_tokens: 0,
+    infeasible_paths: [],
+    loss_history: [],
+    all_generated_cases: testSuite,
+    gate_exhausted_paths: [],
+    failure_log: [],
+    iteration_details: [],
+    gap_coverage_map: {},
+    decision_truth_tables: {},
+    probe_records: [],
+  };
+  const summary = {
+    converged: true,
+    coverage_pct: 100.0,
+    test_case_count: testSuite.length,
+    iteration_count: testSuite.length,
+    headline: `已產生 ${testSuite.length} 組測試資料，達成 100% MC/DC 覆蓋率`,
+  };
+  goToStep(5);
+  renderRunData(summary, raw);
+  $('code-tab-report').classList.remove('hidden');
+  switchCodeTab('report');
+  // 假資料預覽不對應任何真的環境／執行紀錄，不用（也不能）刷新常駐報告分頁的
+  // 執行紀錄選單。
+}
+
+function renderCasesTable(cases) {
+  const table = $('cases-table');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+  if (!cases.length) {
+    tbody.innerHTML = '<tr><td>（沒有產生任何測試資料）</td></tr>';
+    return;
+  }
+  const keys = Object.keys(cases[0]).filter((k) => !k.startsWith('_'));
+  const trHead = document.createElement('tr');
+  keys.forEach((k) => {
+    const th = document.createElement('th');
+    th.textContent = k;
+    trHead.appendChild(th);
+  });
+  thead.appendChild(trHead);
+
+  cases.forEach((c) => {
+    const tr = document.createElement('tr');
+    keys.forEach((k) => {
+      const td = document.createElement('td');
+      const v = c[k];
+      if (typeof v === 'boolean') {
+        td.innerHTML = `<span class="bool-badge">${v ? '是' : '否'}</span>`;
+      } else {
+        td.textContent = v;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+$('btn-back-result').onclick = () => {
+  // 沒有原始碼可以回填（例如環境載入失敗）時，直接重新開始比較安全
+  if (!analyzeResult) {
+    resetAll();
+    return;
+  }
+  goToStep(3);
+};
+$('btn-restart').onclick = resetAll;
+
+function resetAll() {
+  currentJobId = null;
+  currentRunId = null;
+  currentEnvId = null;
+  analyzeResult = null;
+  lockedSourceCode = null;
+  $('code-tab-locked').classList.add('hidden');
+  $('code-tab-versions').classList.add('hidden');
+  $('code-tab-report').classList.add('hidden');
+  $('report-content').innerHTML = '';
+  switchCodeTab('edit');
+  $('step1-func-picker').classList.add('hidden');
+  lockedHighlightRange = null;
+  $('func-highlight-locked').innerHTML = '';
+  if (ws) { ws.close(); ws = null; }
+  goToStep(1);
+  showTestEntryScreen();
+  $('pbar').classList.add('indeterminate');
+  $('pbar').style.width = '0%';
+  $('import-upload-filename').textContent = '';
+  $('import-filename').textContent = '';
+}
+
+// ── 共用小工具 ───────────────────────────────────────────────────────────
+function statusBadge(status) {
+  const label = { queued: '排隊中', running: '執行中', succeeded: '已完成', failed: '失敗', cancelled: '已取消' }[status] || status;
+  return `<span class="status-badge status-${status}">${label}</span>`;
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('zh-TW', { hour12: false });
+}
+
+// ── 程式庫：列環境（不是原始 job），每個環境附最新一次執行的狀態／覆蓋率 ──────
+async function loadLibrary() {
+  const tbody = $('library-table').querySelector('tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6">載入中…</td></tr>';
+  try {
+    const resp = await fetch('/api/environments');
+    const envs = await resp.json();
+    if (!resp.ok) throw new Error(envs.detail || '載入失敗');
+    renderLibraryTable(envs);
+  } catch (err) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${err.message}</td></tr>`;
+  }
+}
+
+function renderLibraryTable(envs) {
+  const tbody = $('library-table').querySelector('tbody');
+  tbody.innerHTML = '';
+  if (!envs.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">還沒有任何環境，點右上角建立一個</td></tr>';
+    return;
+  }
+  envs.forEach((env) => {
+    const tr = document.createElement('tr');
+    const latest = env.latest_run;
+    const runCell = latest
+      ? `${statusBadge(latest.status)}${latest.coverage_pct != null ? ` ${latest.coverage_pct}%` : ''}`
+      : '<span class="hint" style="margin:0;">尚未執行</span>';
+    tr.innerHTML = `
+      <td><code>${escapeHtml(env.name)}</code></td>
+      <td>${escapeHtml(env.func_name)}</td>
+      <td>${escapeHtml(env.language)}</td>
+      <td>${runCell}</td>
+      <td>${fmtTime(env.updated_at)}</td>
+      <td>
+        <button type="button" class="btn btn-ghost btn-open-env">開啟</button>
+        <button type="button" class="btn btn-ghost btn-delete-env">刪除</button>
+      </td>
+    `;
+    tr.querySelector('.btn-open-env').onclick = () => openEnvironment(env.id);
+    tr.querySelector('.btn-delete-env').onclick = async () => {
+      if (!confirm(`確定要刪除環境「${env.name}」嗎？這會一併刪除它的版本與執行紀錄。`)) return;
+      await fetch(`/api/environments/${env.id}`, { method: 'DELETE' });
+      loadLibrary();
+    };
+    tbody.appendChild(tr);
+  });
+}
+
+$('btn-new-environment').onclick = () => {
+  switchPage('test');
+  resetAll();
+  enterTestFlow();
+};
+
+// ── 軟體測試入口：先選測試類型，再建立新環境／選擇已有環境；選完才顯示編輯器
+// 跟操作側欄（.test-layout）——未來要加其他測試類型，都在這個進入畫面加選項，
+// 不用改動下面的編輯器／步驟流程。目前只有 MC/DC 一種，先把骨架搭好。
+let selectedTestType = 'mcdc';
+
+document.querySelectorAll('#test-type-tabs .entry-tile').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#test-type-tabs .entry-tile').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedTestType = btn.dataset.testType;
+  };
+});
+
+// 「程式碼來源」四按鈕／環境選擇器互斥顯示同一塊版面（右上），切換時用淡入＋
+// 輕微位移的動畫（跟步驟卡片的 stepCardIn 同手法）。重新加同一個動畫 class 前
+// 要先移除再強制 reflow（讀一次 offsetWidth），不然瀏覽器會判斷「class 沒變」
+// 而不重播動畫。
+function showEntryRightTopView(view) {
+  const grid = $('entry-source-grid');
+  const picker = $('env-picker');
+  const showEl = view === 'picker' ? picker : grid;
+  const hideEl = view === 'picker' ? grid : picker;
+  hideEl.classList.add('hidden');
+  showEl.classList.remove('hidden');
+  showEl.classList.remove('entry-swap-anim');
+  void showEl.offsetWidth;
+  showEl.classList.add('entry-swap-anim');
+  $('entry-right-top-title').textContent = view === 'picker' ? '選擇環境' : '程式碼來源';
+}
+
+function showTestEntryScreen() {
+  $('test-entry-screen').classList.remove('hidden');
+  $('test-layout').classList.add('hidden');
+  document.querySelectorAll('.entry-left .entry-tile').forEach((b) => b.classList.remove('active'));
+  $('btn-landing-new').classList.add('active'); // 預設就是顯示「程式碼來源」四按鈕，這裡跟著標成選取狀態
+  showEntryRightTopView('source');
+}
+
+function enterTestFlow() {
+  $('test-entry-screen').classList.add('hidden');
+  $('test-layout').classList.remove('hidden');
+
+  // 版本／報告分頁選完環境（或開始建立新環境）就要看得到，不用等真的送出第一次
+  // 測試——currentEnvId 這時如果還是 null（剛選「建立新環境」／來源按鈕，環境
+  // 還沒真的建立），分頁本身先出現、內容用提示文字頂著；已經有 currentEnvId
+  // （從程式庫開啟既有環境）的話，接下來 openEnvironment 會呼叫
+  // showPersistentReportForEnv 填入真正的資料，這裡先不覆蓋。
+  $('code-tab-versions').classList.remove('hidden');
+  $('code-tab-report').classList.remove('hidden');
+  if (!currentEnvId) {
+    $('versions-timeline').innerHTML = '<div class="report-hint" style="margin:0;">建立環境並執行第一次測試後，這裡會顯示程式碼的版本歷程。</div>';
+    $('versions-diff-area').innerHTML = '';
+    $('report-run-picker').innerHTML = '';
+    $('coverage-trend-chart').innerHTML = '';
+    $('report-content').innerHTML = '<div class="report-hint" style="margin:0;">建立環境並執行第一次測試後，這裡會顯示測試報告。</div>';
+  }
+}
+
+// 「建立新環境」現在只是切換右上角要看哪一種選項（跟「選擇已有環境」對稱），
+// 不會自己直接跳進編輯器——真正進去是點了下面「程式碼來源」四個按鈕其中一個
+// （或既有環境那邊按「開啟」）才算數。
+$('btn-landing-new').onclick = () => {
+  document.querySelectorAll('.entry-left .entry-tile').forEach((b) => b.classList.remove('active'));
+  $('btn-landing-new').classList.add('active');
+  showEntryRightTopView('source');
+};
+
+// 「程式碼來源」四個按鈕：跟左邊「建立新環境」殊途同歸，都是進到編輯器＋新環境
+// 流程，差別只在直接幫使用者把匯入懸浮框開到對應的分頁（上傳／GitHub／AI），
+// 「空白」則單純進編輯器、留給使用者自己貼／打程式碼——重用既有的
+// setImportMode／toggleImportPopover，不用另外寫一套匯入邏輯。
+// 一定要 stopPropagation：這幾個按鈕不在懸浮框或它的開關按鈕裡面，同一次點擊
+// 冒泡到 document 時，「點外面關閉懸浮框」的全域監聽會誤判成「點了外面」，
+// 把剛打開的懸浮框立刻關掉。
+function openImportFromEntry(e, mode) {
+  e.stopPropagation();
+  currentEnvId = null;
+  enterTestFlow();
+  setImportMode(mode);
+  toggleImportPopover(true);
+}
+$('btn-entry-upload').onclick = (e) => openImportFromEntry(e, 'upload');
+$('btn-entry-github').onclick = (e) => openImportFromEntry(e, 'github');
+$('btn-entry-ai').onclick = (e) => openImportFromEntry(e, 'ai');
+$('btn-entry-blank').onclick = () => {
+  currentEnvId = null;
+  enterTestFlow();
+};
+
+$('btn-landing-existing').onclick = async () => {
+  document.querySelectorAll('.entry-left .entry-tile').forEach((b) => b.classList.remove('active'));
+  $('btn-landing-existing').classList.add('active');
+  showEntryRightTopView('picker');
+  hide('env-picker-error');
+  const sel = $('env-picker-select');
+  sel.innerHTML = '<option value="">載入中…</option>';
+  try {
+    const resp = await fetch('/api/environments');
+    const envs = await resp.json();
+    if (!resp.ok) throw new Error(envs.detail || '載入失敗');
+    sel.innerHTML = '';
+    if (!envs.length) {
+      sel.innerHTML = '<option value="">（還沒有任何環境，請先建立新環境）</option>';
+      return;
+    }
+    envs.forEach((env) => {
+      const opt = document.createElement('option');
+      opt.value = env.id;
+      opt.textContent = `${env.name}（${env.func_name}）`;
+      sel.appendChild(opt);
+    });
+  } catch (err) {
+    $('env-picker-error').textContent = err.message;
+    show('env-picker-error');
+  }
+};
+
+$('btn-env-picker-open').onclick = () => {
+  const envId = $('env-picker-select').value;
+  if (envId) openEnvironment(envId);
+};
+
+// 把環境存的 domain_context／domain_types／domain_bounds 覆蓋回參數表——
+// 環境載入時是先跑一次 /api/analyze 拿到型別猜測的骨架，再用這裡存的實際設定
+// （使用者當初調過的上下限、AI 建議過的值）蓋掉分析器的預設猜測。
+function applyEnvironmentConfigToParamTable(env) {
+  $('domain-context').value = env.domain_context || '';
+  document.querySelectorAll('#param-table tbody tr').forEach((row) => {
+    const typeSel = row.querySelector('.param-type');
+    const name = typeSel.dataset.param;
+    const typ = env.domain_types[name] || typeSel.value;
+    const bounds = env.domain_bounds[name];
+    renderParamRowCells(row, {
+      name, typ,
+      lo: bounds ? bounds[0] : 0,
+      hi: bounds ? bounds[1] : 100,
+      boolRestrict: boundsToBoolRestrict(bounds),
+      nameEditable: !!row.querySelector('.param-name-input'),
+      isFreeVar: !!row.querySelector('.gap-status-badge'),
+    });
+  });
+}
+
+async function openEnvironment(envId) {
+  switchPage('test');
+  try {
+    const resp = await fetch(`/api/environments/${envId}`);
+    const env = await resp.json();
+    if (!resp.ok) throw new Error(env.detail || '載入環境失敗');
+
+    currentEnvId = env.id;
+    setSourceCode(env.source_code);
+    enterTestFlow();
+
+    const analyzeResp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_code: env.source_code }),
+    });
+    const analyzed = await analyzeResp.json();
+    if (!analyzeResp.ok) throw new Error(analyzed.detail || '分析失敗');
+
+    analyzeResult = analyzed;
+    selectedFuncIdx = Math.max(0, analyzed.functions.findIndex((f) => f.name === env.func_name));
+    lockCurrentSourceCode(env.source_code);
+    renderStep1FuncPicker();
+    renderConfigStep();
+    applyEnvironmentConfigToParamTable(env);
+    highlightLockedFunction(analyzeResult.functions[selectedFuncIdx].name);
+
+    await showPersistentReportForEnv(env.id);
+    goToStep(2);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// ── 版本分頁：git-log 風格的時間軸，點一個版本看它跟上一版的差異 ──────────────
+let currentEnvVersions = [];
+
+async function refreshVersionsTab(envId) {
+  $('code-tab-versions').classList.remove('hidden');
+  try {
+    const resp = await fetch(`/api/environments/${envId}/versions`);
+    const versions = await resp.json();
+    if (!resp.ok) throw new Error(versions.detail || '載入版本失敗');
+    currentEnvVersions = versions;
+    renderVersionsTimeline(versions);
+  } catch (err) {
+    $('versions-timeline').innerHTML = `<div class="report-hint">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderVersionsTimeline(versions) {
+  // versions 是時間正序（storage.list_versions ORDER BY created_at ASC）；
+  // git log 習慣新的在上面，畫的時候反過來。
+  const container = $('versions-timeline');
+  container.innerHTML = '';
+  const ordered = versions.slice().reverse();
+  ordered.forEach((v, displayIdx) => {
+    const realIdx = versions.length - 1 - displayIdx; // 對回 versions 原本的時間正序索引
+    const isHead = realIdx === versions.length - 1;
+    const row = document.createElement('div');
+    row.className = 'version-row';
+    row.dataset.versionIdx = realIdx;
+    row.innerHTML = `
+      <div class="version-dot-col">
+        <div class="version-dot${isHead ? ' version-dot-head' : ''}"></div>
+        ${displayIdx < ordered.length - 1 ? '<div class="version-line"></div>' : ''}
+      </div>
+      <div class="version-info">
+        <div class="version-hash"><code>${v.source_hash.slice(0, 8)}</code>${isHead ? ' <span class="bool-badge">HEAD</span>' : ''}</div>
+        <div class="hint" style="margin:2px 0 0;">${fmtTime(v.created_at)}</div>
+      </div>
+    `;
+    row.onclick = () => showVersionDiff(realIdx);
+    container.appendChild(row);
+  });
+  if (versions.length) showVersionDiff(versions.length - 1);
+}
+
+async function showVersionDiff(idx) {
+  document.querySelectorAll('.version-row').forEach((el) => {
+    el.classList.toggle('active', Number(el.dataset.versionIdx) === idx);
+  });
+  const out = $('versions-diff-area');
+  if (idx <= 0) {
+    out.innerHTML = '<div class="report-hint" style="margin:0;">這是最早的版本，沒有更早的版本可以比較。</div>';
+    return;
+  }
+  out.innerHTML = '<div class="report-hint" style="margin:0;">載入中…</div>';
+  try {
+    const from = currentEnvVersions[idx - 1].id;
+    const to = currentEnvVersions[idx].id;
+    const resp = await fetch(`/api/environments/${currentEnvId}/diff?from=${from}&to=${to}`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '比較失敗');
+    out.innerHTML = `<pre>${escapeHtml(data.diff || '（跟上一版完全相同）')}</pre>`;
+  } catch (err) {
+    out.innerHTML = `<div class="report-hint" style="margin:0;">載入失敗：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ── 常駐報告分頁：不用等剛跑完，只要環境開著就能看任何一次執行紀錄的報告 ──────
+async function showPersistentReportForEnv(envId) {
+  $('code-tab-report').classList.remove('hidden');
+  await refreshVersionsTab(envId);
+  await refreshRunPicker(envId);
+}
+
+function runStatusLabel(status) {
+  return { queued: '排隊中', running: '執行中', succeeded: '已完成', failed: '失敗', cancelled: '已取消' }[status] || status;
+}
+
+let currentEnvRuns = [];
+
+async function refreshRunPicker(envId) {
+  let runs = [];
+  try {
+    const resp = await fetch(`/api/environments/${envId}/runs`);
+    runs = await resp.json();
+    if (!resp.ok) throw new Error(runs.detail || '載入執行紀錄失敗');
+  } catch (err) {
+    $('report-content').innerHTML = `<div class="report-hint">${escapeHtml(err.message)}</div>`;
+    return;
+  }
+  currentEnvRuns = runs;
+  renderReportRunPicker(runs);
+  renderCoverageTrendChart(runs);
+  if (runs.length) {
+    await loadRunIntoReport(runs[0].id); // list_runs 依 created_at 遞減排序，第一筆就是最新
+  } else {
+    $('report-content').innerHTML = '<div class="report-hint">這個環境還沒有任何執行紀錄。</div>';
+  }
+}
+
+function renderReportRunPicker(runs) {
+  const sel = $('report-run-picker');
+  sel.innerHTML = '';
+  runs.forEach((r) => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    const cov = r.coverage_pct != null ? `${r.coverage_pct}%` : '—';
+    // 附上這次執行當時測的是哪個版本（短 hash），跟「版本」分頁的 git-log
+    // 用同一種標示法，這樣程式碼改過之後才看得出哪次執行對應哪個版本。
+    const versionLabel = r.version_hash ? `版本 ${r.version_hash.slice(0, 8)}` : '';
+    opt.textContent = `${fmtTime(r.created_at)} · ${runStatusLabel(r.status)} · ${cov}` +
+      (versionLabel ? ` · ${versionLabel}` : '');
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => loadRunIntoReport(sel.value);
+}
+
+async function loadRunIntoReport(runId) {
+  currentRunId = runId;
+  $('report-run-picker').value = runId;
+  renderCoverageTrendChart(currentEnvRuns); // 重畫以更新選中點的樣式
+  try {
+    const resp = await fetch(`/api/runs/${runId}`);
+    const data = await resp.json();
+    if (!resp.ok) {
+      $('report-content').innerHTML = `<div class="report-hint">${escapeHtml(data.detail || '這次執行還沒有結果')}</div>`;
+      return;
+    }
+    // 切換到某次歷史紀錄時，右側 Step 5「結果」面板要跟著換成同一份資料，不能
+    // 只有這裡的缺口卡片換了、右側統計數字／測試案例表還停在最後一次剛跑完的。
+    renderRunData(data.summary, data.raw);
+  } catch (err) {
+    $('report-content').innerHTML = `<div class="report-hint">載入失敗：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ── 覆蓋率趨勢折線圖：單一序列（這個環境的歷次執行覆蓋率），不需要圖例，用
+// brand color 畫線＋資料點；點擊資料點＝切換到那次執行紀錄（跟下拉選單同步）。
+// 只有「有覆蓋率數字」的執行（成功且已存檔）才畫進趨勢線；執行中／失敗／取消
+// 的沒有覆蓋率可畫，還是看得到在下拉選單裡，只是不進這條線。
+function renderCoverageTrendChart(runs) {
+  const container = $('coverage-trend-chart');
+  const points = runs.filter((r) => r.coverage_pct != null).slice().reverse(); // 舊→新，時間往右
+
+  if (points.length < 2) {
+    container.innerHTML = '<div class="report-hint" style="margin:0 0 12px;">至少需要兩次有覆蓋率的執行紀錄才能畫出趨勢線。</div>';
+    return;
+  }
+
+  const W = Math.max(320, container.clientWidth || 560);
+  const H = 150;
+  const padL = 34, padR = 14, padT = 14, padB = 22;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const xFor = (i) => padL + (points.length === 1 ? plotW / 2 : (plotW * i) / (points.length - 1));
+  const yFor = (v) => padT + plotH - (plotH * v) / 100;
+
+  const gridLines = [0, 25, 50, 75, 100].map((v) => `
+    <line x1="${padL}" y1="${yFor(v)}" x2="${W - padR}" y2="${yFor(v)}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,3"/>
+    <text x="${padL - 8}" y="${yFor(v) + 3}" font-size="10" fill="#94a3b8" text-anchor="end">${v}%</text>
+  `).join('');
+
+  const linePoints = points.map((p, i) => `${xFor(i)},${yFor(p.coverage_pct)}`).join(' ');
+
+  const dots = points.map((p, i) => {
+    const isSelected = p.id === currentRunId;
+    return `
+      <circle cx="${xFor(i)}" cy="${yFor(p.coverage_pct)}" r="${isSelected ? 6 : 4}"
+        style="fill:${isSelected ? '#fff' : 'var(--brand)'}; stroke:var(--brand); stroke-width:2;"/>
+      <circle class="trend-dot-hit" data-run-id="${p.id}" data-idx="${i}"
+        cx="${xFor(i)}" cy="${yFor(p.coverage_pct)}" r="12" fill="transparent"/>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+      ${gridLines}
+      <polyline points="${linePoints}" fill="none" style="stroke:var(--brand); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"/>
+      ${dots}
+    </svg>
+    <div id="trend-tooltip" class="hint" style="margin:2px 0 12px; min-height:15px;"></div>
+  `;
+
+  container.querySelectorAll('.trend-dot-hit').forEach((el) => {
+    el.addEventListener('click', () => loadRunIntoReport(el.dataset.runId));
+    el.addEventListener('mouseenter', () => {
+      const p = points[Number(el.dataset.idx)];
+      $('trend-tooltip').textContent = `${fmtTime(p.created_at)} · ${p.coverage_pct}%`;
+    });
+    el.addEventListener('mouseleave', () => { $('trend-tooltip').textContent = ''; });
+  });
+}
+</script>
+
+</body>
+</html>

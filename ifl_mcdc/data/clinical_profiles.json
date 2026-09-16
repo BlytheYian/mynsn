@@ -1,0 +1,113 @@
+{
+  "vaccine_eligibility": {
+    "population": "台灣一般成人流感疫苗接種候選族群",
+    "variables": {
+      "age": {
+        "description": "年齡分布：18~29 歲約佔 20%，30~49 歲約佔 30%，50~64 歲約佔 25%，65 歲以上約佔 25%（依台灣 MOHW 統計）"
+      },
+      "high_risk": {
+        "description": "高風險族群（慢性病、免疫缺陷等）盛行率約 30%（True 約 30%，False 約 70%）"
+      },
+      "days_since_last": {
+        "description": "上次接種距今天數：0~180 天（近期接種）約 40%，181~365 天約 35%，超過 365 天約 25%"
+      },
+      "egg_allergy": {
+        "description": "雞蛋過敏盛行率約 2~3%（True 約 2%，False 約 98%）"
+      }
+    },
+    "comorbidities": "高風險族群中，糖尿病與高血壓共病率約 60%；高齡（≥65 歲）高風險比例較高（約 55%）"
+  },
+  "surgery_risk": {
+    "population": "台灣外科手術術前風險評估候選族群",
+    "variables": {
+      "age": {
+        "description": "年齡分布：18~39 歲約 15%，40~59 歲約 35%，60~79 歲約 38%，80 歲以上約 12%（依台灣醫院統計）"
+      },
+      "bmi": {
+        "description": "BMI 分布：低於 18.5（過輕）約 5%，18.5~24（正常）約 40%，24~27（過重）約 30%，27 以上（肥胖）約 25%"
+      },
+      "has_diabetes": {
+        "description": "糖尿病盛行率約 11%（True 約 11%，False 約 89%）"
+      },
+      "has_hypertension": {
+        "description": "高血壓盛行率約 25%（True 約 25%，False 約 75%）"
+      },
+      "has_heart_disease": {
+        "description": "心臟病盛行率約 8%（True 約 8%，False 約 92%）"
+      },
+      "smoker": {
+        "description": "吸菸率約 14%（True 約 14%，False 約 86%）"
+      },
+      "asa_class": {
+        "description": "ASA 分級：1 級約 20%，2 級約 45%，3 級約 30%，4 級約 5%（台灣麻醉學會統計）"
+      },
+      "emergency": {
+        "description": "緊急手術比例約 15%（True 約 15%，False 約 85%）"
+      },
+      "obese": {
+        "description": "肥胖（BMI ≥ 27）盛行率約 25%（True 約 25%，False 約 75%）"
+      }
+    },
+    "comorbidities": "糖尿病與高血壓共病率約 60%；高齡（≥70 歲）伴隨至少一項慢性病比例約 70%"
+  },
+  "icu_admission": {
+    "population": "台灣急診／加護病房收治候選族群",
+    "variables": {
+      "age": {
+        "description": "年齡分布：18~39 歲約 10%，40~59 歲約 25%，60~79 歲約 45%，80 歲以上約 20%"
+      },
+      "gcs_score": {
+        "description": "格拉斯哥昏迷指數（GCS）：15 分（正常）約 30%，12~14 分約 25%，8~11 分約 25%，3~7 分約 20%"
+      },
+      "systolic_bp": {
+        "description": "收縮壓（mmHg）：低於 90（低血壓）約 20%，90~120 約 40%，120~140 約 25%，140 以上約 15%"
+      },
+      "heart_rate": {
+        "description": "心率（次/分鐘）：低於 60 約 5%，60~100 約 50%，100~120 約 30%，120 以上約 15%"
+      },
+      "respiratory_rate": {
+        "description": "呼吸頻率（次/分鐘）：低於 12 約 5%，12~20 約 45%，20~30 約 35%，30 以上約 15%"
+      },
+      "temperature": {
+        "description": "體溫（°C）：低於 36 約 10%，36~37.5 約 60%，37.5~39 約 20%，39 以上約 10%"
+      },
+      "oxygen_saturation": {
+        "description": "血氧飽和度（%）：95~100 約 55%，90~94 約 25%，85~89 約 12%，低於 85 約 8%"
+      },
+      "has_sepsis": {
+        "description": "敗血症盛行率約 15%（True 約 15%，False 約 85%）"
+      },
+      "has_organ_failure": {
+        "description": "器官衰竭盛行率約 12%（True 約 12%，False 約 88%）"
+      },
+      "needs_ventilation": {
+        "description": "需要呼吸器輔助約 20%（True 約 20%，False 約 80%）"
+      }
+    },
+    "comorbidities": "敗血症與器官衰竭共病率約 50%；高齡（≥75 歲）需要呼吸器比例約 35%"
+  },
+  "loan_approval": {
+    "population": "台灣銀行貸款申請候選族群",
+    "variables": {
+      "credit_score": {
+        "description": "信用評分分布：低於 600 約 15%，600~699 約 30%，700~749 約 35%，750 以上約 20%"
+      },
+      "annual_income": {
+        "description": "年收入（新台幣）：低於 40 萬約 25%，40~60 萬約 35%，60~80 萬約 25%，80 萬以上約 15%"
+      },
+      "loan_amount": {
+        "description": "貸款金額：低於 30 萬約 20%，30~50 萬約 35%，50~70 萬約 30%，70 萬以上約 15%"
+      },
+      "employed": {
+        "description": "就業比例約 75%（True 約 75%，False 約 25%，含失業、退休等）"
+      },
+      "has_collateral": {
+        "description": "有抵押品比例約 40%（True 約 40%，False 約 60%）"
+      },
+      "bankruptcy_history": {
+        "description": "曾破產記錄比例約 3%（True 約 3%，False 約 97%）"
+      }
+    },
+    "comorbidities": "信用評分 ≥ 700 且年收入 ≥ 50 萬的申請人中，有抵押品比例較高（約 55%）"
+  }
+}

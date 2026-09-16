@@ -1,0 +1,106 @@
+# Local secrets (keep example configuration)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python environments, caches, and packaging
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.nox/
+*.egg-info/
+build/
+dist/
+
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Local runtime data and experiment output
+/mcdc_lite/backend/data/
+.mutation-toolchain/
+.mutation-check/
+results/
+*.log
+/coverup-log
+
+# Generated experiment results in the repository root
+/complexity_experiment_report.json
+/experiment_crosshair*.json
+/experiment_results*.json
+/ifl_diversity_cases.json
+/llm_semantics_report.json
+/diversity_results.txt
+/e2e_result*.txt
+/validation_complex_results.txt
+/實驗數據報告*.docx
+
+# Local debugging snapshots and scratch output
+/_main_prompt_dump*.txt
+/_patch_dump.txt
+/_new_runs.json
+/scratch_extracted.js
+/system_snapshot.txt
+
+# One-off local report and rerun scripts
+/_gen_report.py
+/_gen_report2.py
+/_rerun.py
+/debug_ifl.py
+
+# Compiled C/C++ and Java artifacts
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.ilk
+*.pdb
+*.class
+
+# Nested project copies and backups (relative to repository root)
+/ifl_mcdc-master/
+/ifl_mcdc-master未處理C備份/
+
+# Editor and operating-system temporary files
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+.claude/
+.github/
+.vscode/
+docs/
+scripts/
+paper_camera_ready_2.txt
+IFL_MCDC_C語言擴充與UI更動概述.docx
+run_validation.py
+run_validation_complex.py
+run_ifl_only.py
+run_pynguin_experiments.py
+run_ifl_diversity.py
+run_crosshair_benchmark.py
+run_c_experiments.py
+run_complexity_experiments.py
+run_convergence.py
+run_coverup.py
+fix_initial_generation.md
+nl_to_code.py
+validate_llm_semantics.py
+validation_fixtures.py
+ANALYSIS_RUN1.md
+compare_ast_treeesitter.py

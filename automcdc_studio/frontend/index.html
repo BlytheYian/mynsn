@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>myNSN</title>
+  <link rel="icon" href="data:," />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:#f1f5f9; color:#1e293b; font-family:system-ui,sans-serif; margin:0; }
+    .page { display:none; }
+    .page.active { display:block; }
+    .tab { padding:6px 14px; border-radius:6px; font-size:13px; cursor:pointer; color:rgba(255,255,255,.8); border:none; background:transparent; transition:.15s; }
+    .tab:hover { background:rgba(255,255,255,.15); color:#fff; }
+    .tab.active { background:rgba(255,255,255,.25); color:#fff; font-weight:600; }
+    .card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:20px; margin-bottom:16px; }
+    .section { font-size:14px; font-weight:600; color:#334155; margin-bottom:14px; }
+    label.lbl { display:block; font-size:12px; color:#64748b; margin-bottom:3px; }
+    input.inp, select.inp, textarea.inp {
+      width:100%; border:1px solid #e2e8f0; border-radius:8px;
+      padding:7px 10px; font-size:13px; outline:none; box-sizing:border-box;
+      transition:.15s; background:#fff;
+    }
+    input.inp:focus, select.inp:focus, textarea.inp:focus {
+      border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15);
+    }
+    textarea.inp { font-family:monospace; resize:vertical; }
+    .btn { padding:7px 16px; border-radius:8px; font-size:13px; cursor:pointer; border:none; font-weight:500; transition:.15s; }
+    .btn:hover { opacity:.85; }
+    .btn-p { background:#4f46e5; color:#fff; }
+    .btn-s { background:#f1f5f9; color:#475569; }
+    .btn-d { background:#fee2e2; color:#b91c1c; }
+    .btn-sm { padding:4px 10px; font-size:12px; }
+    .btn-g { background:#dcfce7; color:#15803d; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:500; }
+    .b-pass  { background:#dcfce7; color:#16a34a; }
+    .b-fail  { background:#fee2e2; color:#dc2626; }
+    .b-error { background:#fef9c3; color:#ca8a04; }
+    .b-cov   { background:#dbeafe; color:#2563eb; }
+    .b-auto  { background:#ede9fe; color:#7c3aed; }
+    .b-man   { background:#f1f5f9; color:#64748b; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; padding:8px 12px; color:#94a3b8; border-bottom:1px solid #f1f5f9; font-size:12px; font-weight:500; }
+    td { padding:8px 12px; border-bottom:1px solid #f8fafc; }
+    tr:hover td { background:#fafafa; }
+    .selrow { cursor:pointer; }
+    .selrow.active td { background:#eef2ff; }
+    .pbar-bg { background:#e2e8f0; border-radius:99px; overflow:hidden; }
+    .pbar { background:#4f46e5; height:100%; border-radius:99px; transition:width .4s; }
+    .pbar.indeterminate { width:40% !important; animation: pbar-slide 1.2s ease-in-out infinite; }
+    @keyframes pbar-slide { 0% { margin-left:0%; } 50% { margin-left:60%; } 100% { margin-left:0%; } }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    .mono { font-family:monospace; }
+    .tag { display:inline-block; background:#f1f5f9; color:#475569; border-radius:4px; padding:1px 6px; font-size:11px; font-family:monospace; }
+    .flip-ok   { color:#16a34a; font-weight:700; }
+    .flip-no   { color:#dc2626; font-weight:700; cursor:pointer; }
+    .flip-no:hover { text-decoration:underline; }
+    .flip-inf  { color:#94a3b8; }
+    .flip-exc  { color:#cbd5e1; text-decoration:line-through; }
+    .accordion-btn { width:100%; text-align:left; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:13px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+    .accordion-body { display:none; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 8px 8px; padding:14px; }
+    .accordion-body.open { display:block; }
+    code { background:#f1f5f9; padding:1px 5px; border-radius:4px; font-family:monospace; font-size:12px; }
+    .hint-card { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; font-size:13px; }
+  </style>
+</head>
+<body>
+
+<!-- 頂部導航 -->
+<nav style="background:#4338ca; padding:10px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,.2);">
+  <span style="font-weight:700; font-size:15px; color:#fff; margin-right:6px;">My NSN</span>
+  <select id="nav-env" onchange="onEnvSelect()" style="background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3); border-radius:6px; padding:4px 10px; font-size:13px; outline:none; min-width:180px;">
+    <option value="">── 選擇測試環境 ──</option>
+  </select>
+  <div style="display:flex; gap:2px; margin-left:6px;">
+    <button onclick="showTab('env')"  class="tab active" id="tab-env">環境管理</button>
+    <button onclick="showTab('gen')"  class="tab" id="tab-gen">自動生成</button>
+    <button onclick="showTab('suit')" class="tab" id="tab-suit">測試套件</button>
+    <button onclick="showTab('run')"  class="tab" id="tab-run">執行</button>
+    <button onclick="showTab('cov')"  class="tab" id="tab-cov">覆蓋率</button>
+    <button onclick="showTab('req')"  class="tab" id="tab-req">需求追溯</button>
+    <button onclick="showTab('rep')"  class="tab" id="tab-rep">報告</button>
+  </div>
+  <button onclick="showTab('cfg')" class="tab" id="tab-cfg" style="margin-left:auto;">⚙ LLM 設定</button>
+</nav>
+
+<div style="max-width:1120px; margin:0 auto; padding:20px;">
+
+<!-- ═══════════════════════ 環境管理 ═══════════════════════ -->
+<div id="page-env" class="page active">
+
+  <div class="card">
+    <div class="section">建立新測試環境</div>
+
+    <!-- 自然語言生成程式碼 -->
+    <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:8px; padding:12px; margin-bottom:14px;">
+      <div style="font-size:13px; color:#7c3aed; font-weight:500; margin-bottom:8px;">以自然語言描述，自動生成被測函數</div>
+      <div style="display:flex; gap:8px;">
+        <textarea id="nl-desc" class="inp" style="height:50px; flex:1;" placeholder="例：判斷病患是否符合疫苗施打資格，條件：年齡≥65 或高風險成人，且距上次接種>180天，且無蛋白過敏"></textarea>
+        <button onclick="genCodeFromNL()" class="btn btn-p" style="white-space:nowrap; align-self:flex-end;">生成程式碼</button>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:12px;">
+      <div>
+        <label class="lbl">原始碼</label>
+        <textarea id="env-source" class="inp" style="height:130px; font-size:12px;" placeholder="貼上被測函數..."></textarea>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label class="lbl">語言</label>
+          <select id="env-lang" class="inp">
+            <option value="python">Python</option>
+            <option value="c">C</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">環境名稱</label>
+          <input id="env-name" type="text" class="inp" placeholder="例：vaccine_v1" />
+        </div>
+        <div>
+          <label class="lbl">語境描述</label>
+          <input id="env-ctx" type="text" class="inp" placeholder="例：流感疫苗篩選系統" />
+        </div>
+        <div>
+          <label class="lbl">路徑約束模式</label>
+          <select id="env-direction" class="inp">
+            <option value="sequential">if-return</option>
+            <option value="none">巢狀 if</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">初始隨機測試數量</label>
+          <input id="env-min-init" type="number" class="inp" value="6" min="1" />
+          <div style="font-size:11px; color:#94a3b8; margin-top:2px;">建議 max(6, 3×k)，解析後自動更新</div>
+        </div>
+        <button onclick="parseSource()" class="btn btn-p" style="align-self:flex-start;">解析函數</button>
+      </div>
+    </div>
+
+    <!-- 解析結果 -->
+    <div id="parse-section" style="display:none;">
+      <div class="grid2" style="margin-bottom:12px;">
+        <div>
+          <label class="lbl">目標函數</label>
+          <select id="env-func" class="inp" onchange="onFuncSelect()"></select>
+        </div>
+        <div>
+          <label class="lbl">函數簽章</label>
+          <input id="env-sig" type="text" class="inp" readonly />
+        </div>
+      </div>
+
+      <!-- 參數值域表格 -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label class="lbl" style="margin:0;">參數型別與值域</label>
+          <button onclick="suggestBounds()" class="btn btn-s btn-sm">LLM 推薦邊界值</button>
+        </div>
+        <div id="suggest-hint" class="hint-card" style="display:none; margin-bottom:8px;"></div>
+        <table style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+          <thead style="background:#f8fafc;">
+            <tr><th>參數</th><th>型別</th><th>最小值</th><th>最大值</th><th></th></tr>
+          </thead>
+          <tbody id="param-table"></tbody>
+        </table>
+      </div>
+
+      <!-- 進階設定（手風琴） -->
+      <div style="margin-bottom:12px;">
+        <button class="accordion-btn" onclick="toggleAcc('acc-cfg')">
+          <span>進階設定（CFG 條件樹、Stub/Mock、參數約束）</span><span id="acc-cfg-icon">▶</span>
+        </button>
+        <div id="acc-cfg" class="accordion-body">
+
+          <!-- CFG 條件樹 -->
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px; font-weight:500; margin-bottom:6px;">控制流程圖與條件結構</div>
+            <button onclick="loadCFG()" class="btn btn-s btn-sm" style="margin-bottom:8px;">載入 CFG</button>
+            <div id="cfg-view" style="font-family:monospace; font-size:12px; background:#f8fafc; border-radius:6px; padding:10px; white-space:pre-wrap; max-height:200px; overflow-y:auto; display:none;"></div>
+          </div>
+
+          <!-- Stub / Mock -->
+          <div style="margin-bottom:14px; border-top:1px solid #f1f5f9; padding-top:14px;">
+            <div style="font-size:13px; font-weight:500; margin-bottom:6px;">外部依賴替換（Stub / Mock）</div>
+            <div class="grid3" style="margin-bottom:8px;">
+              <div>
+                <label class="lbl">呼叫位置</label>
+                <input id="stub-site" type="text" class="inp" placeholder="例：fetch_patient_data" />
+              </div>
+              <div>
+                <label class="lbl">策略</label>
+                <select id="stub-strategy" class="inp">
+                  <option value="fixed">固定回傳值</option>
+                  <option value="sequence">序列回傳</option>
+                  <option value="exception">拋出例外</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl">回傳值 / 例外類型</label>
+                <input id="stub-value" type="text" class="inp" placeholder="例：None 或 ValueError" />
+              </div>
+            </div>
+            <button onclick="addStub()" class="btn btn-s btn-sm" style="margin-bottom:8px;">新增 Stub</button>
+            <table><thead><tr><th>呼叫位置</th><th>策略</th><th>值</th><th></th></tr></thead>
+            <tbody id="stub-list"></tbody></table>
+          </div>
+
+          <!-- 參數約束 -->
+          <div style="border-top:1px solid #f1f5f9; padding-top:14px;">
+            <div style="font-size:13px; font-weight:500; margin-bottom:6px;">參數間約束條件（Z3 約束式）</div>
+            <div class="grid2" style="margin-bottom:8px;">
+              <div>
+                <label class="lbl">描述</label>
+                <input id="cstr-desc" type="text" class="inp" placeholder="例：high_risk=True 時 age 必須 ≥ 18" />
+              </div>
+              <div>
+                <label class="lbl">Z3 約束式</label>
+                <input id="cstr-z3" type="text" class="inp" placeholder="例：Implies(high_risk, age >= 18)" />
+              </div>
+            </div>
+            <button onclick="addConstraint()" class="btn btn-s btn-sm" style="margin-bottom:8px;">新增約束</button>
+            <table><thead><tr><th>描述</th><th>Z3 式子</th><th>來源</th><th></th></tr></thead>
+            <tbody id="cstr-list"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button onclick="createEnv()" class="btn btn-p" id="env-create-btn">建立環境</button>
+        <span id="env-ok" style="font-size:13px; color:#16a34a; display:none;">✓ 環境已建立</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 環境列表 -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="section" style="margin:0;">現有測試環境</div>
+      <button onclick="loadEnvList()" class="btn btn-s btn-sm">重新整理</button>
+    </div>
+    <table>
+      <thead><tr><th>名稱</th><th>函數</th><th>語言</th><th>參數數</th><th>建立時間</th><th></th></tr></thead>
+      <tbody id="env-list"></tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 自動生成 ═══════════════════════ -->
+<div id="page-gen" class="page">
+  <div class="card">
+    <div class="section">自動生成測試向量</div>
+    <div style="font-size:12px; color:#94a3b8; margin-bottom:10px;">
+      LLM 供應商／模型／API Key 設定請至「LLM 設定」分頁管理，此處共用該設定。
+    </div>
+    <div class="grid3" style="margin-bottom:14px;">
+      <div>
+        <label class="lbl">最大迭代次數</label>
+        <input id="gen-iter" type="number" class="inp" value="50" />
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button onclick="startGenerate()" class="btn btn-p">▶ 開始生成</button>
+      <button onclick="stopGenerate()" id="gen-stop" class="btn btn-s" style="display:none;">⏹ 中止</button>
+    </div>
+
+    <!-- 即時進度 -->
+    <div id="gen-prog" style="display:none;">
+      <div style="font-size:12px; color:#64748b; margin-bottom:4px;">即時生成進度</div>
+      <div class="pbar-bg" style="height:10px; margin-bottom:6px;">
+        <div id="gen-bar" class="pbar" style="width:0%; height:10px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px;">
+        <span id="gen-status" style="color:#64748b;">等待中...</span>
+        <span id="gen-pct" style="font-weight:700; color:#4f46e5;">0%</span>
+      </div>
+      <div id="gen-latest" style="font-size:11px; color:#94a3b8; margin-top:4px; font-family:monospace;"></div>
+    </div>
+  </div>
+
+  <!-- 補強生成 -->
+  <div class="card">
+    <div class="section">針對特定缺口補強生成</div>
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+      <div style="flex:1;">
+        <label class="lbl">目標條件 ID（從覆蓋率頁面點擊紅色缺口，或手動輸入）</label>
+        <input id="gen-target" type="text" class="inp" placeholder="例：D1.c3" />
+      </div>
+      <button onclick="startTargetGen()" class="btn btn-p">補強生成</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 測試套件 ═══════════════════════ -->
+<div id="page-suit" class="page">
+  <div class="card">
+    <div class="section">手動新增測試案例</div>
+    <div class="grid2">
+      <div>
+        <label class="lbl">輸入值（JSON 格式）</label>
+        <textarea id="case-inp" class="inp" style="height:80px;" placeholder='{"age": 70, "high_risk": false, "days_since_last": 200, "egg_allergy": false}'></textarea>
+      </div>
+      <div>
+        <label class="lbl">預期輸出（選填，不填為覆蓋率模式）</label>
+        <input id="case-exp" type="text" class="inp" placeholder="例：true" style="margin-bottom:8px;" />
+        <label class="lbl">從 CSV 批次匯入預期值</label>
+        <input id="case-csv" type="file" accept=".csv" class="inp" style="font-size:12px;" />
+        <button onclick="importCSV()" class="btn btn-s btn-sm" style="margin-top:4px;">匯入 CSV</button>
+      </div>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button onclick="addCase()" class="btn btn-p">新增案例</button>
+      <button onclick="captureAll()" class="btn btn-g btn-sm">執行後 Capture 全部預期值</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+      <div class="section" style="margin:0;">測試案例列表</div>
+      <button onclick="loadCases()" class="btn btn-s btn-sm">重新整理</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>輸入值</th><th>預期輸出</th><th>來源</th><th>模式</th><th>啟用</th><th></th></tr></thead>
+      <tbody id="case-list"></tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 執行 ═══════════════════════ -->
+<div id="page-run" class="page">
+  <div class="card">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+      <div class="section" style="margin:0;">執行測試套件</div>
+      <button onclick="runAll()" class="btn btn-p">▶ Run All</button>
+      <span id="run-txt" style="font-size:13px; color:#64748b;"></span>
+    </div>
+
+    <div id="run-sum" style="display:none; margin-bottom:16px;">
+      <div class="grid3" style="gap:10px;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px; text-align:center;">
+          <div style="font-size:26px; font-weight:700; color:#16a34a;" id="sum-p">-</div><div style="font-size:12px; color:#64748b;">通過</div>
+        </div>
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px; text-align:center;">
+          <div style="font-size:26px; font-weight:700; color:#dc2626;" id="sum-f">-</div><div style="font-size:12px; color:#64748b;">失敗</div>
+        </div>
+        <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:14px; text-align:center;">
+          <div style="font-size:26px; font-weight:700; color:#ca8a04;" id="sum-e">-</div><div style="font-size:12px; color:#64748b;">錯誤</div>
+        </div>
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px; text-align:center;">
+          <div style="font-size:26px; font-weight:700; color:#2563eb;" id="sum-cov">-</div><div style="font-size:12px; color:#64748b;">MC/DC</div>
+        </div>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; text-align:center; grid-column:span 2;">
+          <div style="font-size:13px; font-weight:600; color:#334155;" id="sum-ver">-</div><div style="font-size:12px; color:#64748b;">版本記錄</div>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>案例</th><th>輸入值</th><th>實際輸出</th><th>預期輸出</th><th>狀態</th><th>時間</th></tr></thead>
+      <tbody id="run-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- 迴歸測試 -->
+  <div class="card">
+    <div class="section">迴歸比對</div>
+    <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+      <div>
+        <label class="lbl">基準執行</label>
+        <select id="reg-base" class="inp" style="width:200px;"></select>
+      </div>
+      <div>
+        <label class="lbl">當前執行</label>
+        <select id="reg-curr" class="inp" style="width:200px;"></select>
+      </div>
+      <button onclick="compareRuns()" class="btn btn-p">比對</button>
+    </div>
+    <div id="reg-out" style="margin-top:12px; display:none;"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 覆蓋率 ═══════════════════════ -->
+<div id="page-cov" class="page">
+  <div class="card">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <div class="section" style="margin:0;">MC/DC 覆蓋率</div>
+      <button onclick="loadCoverage()" class="btn btn-s btn-sm">重新整理</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <div class="pbar-bg" style="flex:1; height:12px;">
+        <div id="cov-bar" class="pbar" style="width:0%; height:12px;"></div>
+      </div>
+      <span id="cov-pct" style="font-size:22px; font-weight:700; color:#4f46e5; min-width:60px; text-align:right;">0%</span>
+    </div>
+    <div style="font-size:12px; color:#94a3b8; margin-bottom:12px;">
+      O 已覆蓋 &nbsp; X 未覆蓋（點擊查看 Z3 建議）&nbsp; - 不可行 &nbsp; <span style="color:#cbd5e1;">strikethrough</span> 已排除
+    </div>
+    <table>
+      <thead><tr><th>條件 ID</th><th>條件表達式</th><th style="text-align:center;">F2T</th><th style="text-align:center;">T2F</th><th></th></tr></thead>
+      <tbody id="cov-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- 趨勢圖 -->
+  <div class="card">
+    <div class="section">歷次覆蓋率趨勢</div>
+    <div style="display:flex; gap:4px; align-items:flex-end; height:80px; padding:4px 0;" id="trend-bars"></div>
+    <div style="display:flex; gap:4px; font-size:11px; color:#94a3b8; margin-top:4px;" id="trend-lbls"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 需求追溯 ═══════════════════════ -->
+<div id="page-req" class="page">
+  <div class="card">
+    <div class="section">需求管理</div>
+    <div class="grid3" style="margin-bottom:10px;">
+      <div>
+        <label class="lbl">需求編號</label>
+        <input id="req-id" type="text" class="inp" placeholder="例：REQ-001" />
+      </div>
+      <div>
+        <label class="lbl">需求描述</label>
+        <input id="req-desc" type="text" class="inp" placeholder="例：病患年齡≥65 應符合資格" />
+      </div>
+      <div>
+        <label class="lbl">來源</label>
+        <input id="req-src" type="text" class="inp" placeholder="例：SRS v1.0" />
+      </div>
+    </div>
+    <button onclick="addReq()" class="btn btn-p btn-sm">新增需求</button>
+  </div>
+
+  <div class="card">
+    <div class="section">需求 × 測試案例追溯矩陣</div>
+    <div id="req-list"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ 報告 ═══════════════════════ -->
+<div id="page-rep" class="page">
+  <div class="card">
+    <div class="section">匯出測試報告</div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="exportReport('html')" class="btn btn-p">下載 HTML 報告</button>
+      <button onclick="exportReport('csv')"  class="btn btn-s">下載 CSV</button>
+      <button onclick="exportReport('json')" class="btn btn-s">下載 JSON</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ LLM 設定 ═══════════════════════ -->
+<div id="page-cfg" class="page">
+  <div class="card" style="max-width:460px;">
+    <div class="section">LLM 設定管理</div>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div>
+        <label class="lbl">供應商</label>
+        <select id="cfg-prov" class="inp" onchange="onCfgProvChange()">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="ollama">Ollama（本地）</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">模型名稱</label>
+        <input id="cfg-model" type="text" class="inp" value="gpt-4.1-mini" />
+        <div id="cfg-hint" style="display:none; font-size:12px; color:#94a3b8; margin-top:3px;">
+          執行 <code>ollama list</code> 查看已安裝的模型名稱
+        </div>
+      </div>
+      <div id="cfg-url-row" style="display:none;">
+        <label class="lbl">Ollama Base URL</label>
+        <input id="cfg-url" type="text" class="inp" value="http://localhost:11434" />
+      </div>
+      <div id="cfg-key-row">
+        <label class="lbl">API Key</label>
+        <input id="cfg-key" type="password" class="inp" placeholder="sk-..." />
+      </div>
+      <div>
+        <label class="lbl">預設最大迭代次數</label>
+        <input id="cfg-iter" type="number" class="inp" value="50" />
+      </div>
+      <div>
+        <label class="lbl">Token 預算</label>
+        <input id="cfg-budget" type="number" class="inp" value="100000" />
+      </div>
+      <div style="background:#f8fafc; border-radius:8px; padding:10px;">
+        <div style="font-size:12px; color:#64748b;">已使用 Token</div>
+        <div id="cfg-used" style="font-size:22px; font-weight:700; color:#4f46e5;">-</div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button onclick="saveLLMCfg()" class="btn btn-p">儲存設定</button>
+        <span id="cfg-ok" style="font-size:13px; color:#16a34a; display:none;">✓ 已儲存</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- 缺口提示 Modal -->
+<div id="hint-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:14px; padding:24px; max-width:500px; width:90%; box-shadow:0 24px 64px rgba(0,0,0,.2);">
+    <div style="font-weight:600; font-size:15px; margin-bottom:12px;" id="hint-title"></div>
+    <div id="hint-body" style="font-size:13px; color:#374151; margin-bottom:16px; line-height:1.6;"></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button onclick="triggerSupplemental()" class="btn btn-p btn-sm">觸發補強生成</button>
+      <button onclick="doExcludeGap()" class="btn btn-s btn-sm">排除此缺口</button>
+      <button onclick="doJustifyGap()" class="btn btn-s btn-sm">記錄不可行說明</button>
+      <button onclick="closeModal()" class="btn btn-s btn-sm">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
