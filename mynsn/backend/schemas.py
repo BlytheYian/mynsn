@@ -1,4 +1,4 @@
-"""mcdc_lite 對外的簡化請求／回應模型（給前端用，不是 ifl_api 的原始格式）。"""
+"""mynsn 對外的簡化請求／回應模型（給前端用，不是 ifl_api 的原始格式）。"""
 from __future__ import annotations
 
 from typing import Literal

@@ -26,7 +26,7 @@ htmlcov/
 coverage.xml
 
 # Local runtime data and experiment output
-/mcdc_lite/backend/data/
+/mynsn/backend/data/
 .mutation-toolchain/
 .mutation-check/
 results/

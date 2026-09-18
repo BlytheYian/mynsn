@@ -1,6 +1,6 @@
 """呼叫既有 ifl_api（核心引擎 API）的薄客戶端。
 
-mcdc_lite 不 import ifl_mcdc；所有解析／生成／覆蓋率計算都透過 HTTP 呼叫
+mynsn 不 import ifl_mcdc；所有解析／生成／覆蓋率計算都透過 HTTP 呼叫
 ifl_api，避免重複核心邏輯或版本漂移。
 """
 from __future__ import annotations

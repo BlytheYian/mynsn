@@ -2,7 +2,7 @@
 
 直接呼叫 LLM provider 的 REST API，不透過 ifl_mcdc／ifl_api——那兩邊都沒有「生成任意
 程式碼」這個功能，ifl_mcdc 的 LLMSampler 是設計來輸出結構化 JSON 測試案例，不是拿來
-寫函式本身的。呼叫方式比照現有 mcdc_lite 的風格（httpx 直接打 API，不裝額外 SDK）。
+寫函式本身的。呼叫方式比照現有 mynsn 的風格（httpx 直接打 API，不裝額外 SDK）。
 """
 from __future__ import annotations
 

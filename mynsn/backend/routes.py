@@ -1,4 +1,4 @@
-"""mcdc_lite 的簡化 API：把新手需要的操作濃縮成 analyze / generate / jobs 三組端點，
+"""mynsn 的簡化 API：把新手需要的操作濃縮成 analyze / generate / jobs 三組端點，
 內部都是呼叫既有的 ifl_api，不重做核心邏輯。"""
 from __future__ import annotations
 
@@ -289,7 +289,7 @@ async def job_result(job_id: str) -> dict:
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"無法連線到核心引擎 API：{exc}") from exc
 
-    # 如果這個 job 是某個「環境」底下送出的 run，順便把結果整包存進 mcdc_lite 自己
+    # 如果這個 job 是某個「環境」底下送出的 run，順便把結果整包存進 mynsn 自己
     # 的 sqlite（ifl_api 的 JobStore 是純記憶體＋1 小時 TTL，過了就沒了）。
     # 已經存過的話 snapshot_run_result_by_ifl_job_id 內部會直接跳過，這裡不用先判斷。
     storage.snapshot_run_result_by_ifl_job_id(job_id, "succeeded", raw)

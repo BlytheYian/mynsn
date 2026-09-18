@@ -1,4 +1,4 @@
-"""環境（Environment）持久化：輕量 sqlite3（標準庫），維持 mcdc_lite 一貫的薄後端風格，
+"""環境（Environment）持久化：輕量 sqlite3（標準庫），維持 mynsn 一貫的薄後端風格，
 不引入 ORM／新依賴。
 
 三張表：
@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-DB_PATH = Path(__file__).resolve().parent / "data" / "mcdc_lite.db"
+DB_PATH = Path(__file__).resolve().parent / "data" / "mynsn.db"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS environments (

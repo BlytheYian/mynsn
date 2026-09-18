@@ -1158,7 +1158,7 @@ function highlightLockedFunction(funcName) {
 // 供應商金鑰只管「有沒有填」；實際要用哪個供應商、哪個模型是「目前使用的 AI」
 // 這一個全域設定決定的，Step 3／AI 生成程式碼／AI 建議參數三個地方共用同一個
 // 選擇，不會各自分開選。
-const PROVIDER_CREDS_KEY = 'mcdc_lite_provider_creds';
+const PROVIDER_CREDS_KEY = 'mynsn_provider_creds';
 const LLM_PROVIDER_LABELS = { openai: 'OpenAI', anthropic: 'Anthropic', groq: 'Groq', ollama: 'Ollama（本機）' };
 const LLM_DEFAULT_MODELS = {
   openai: 'gpt-4.1-mini',
@@ -1167,7 +1167,7 @@ const LLM_DEFAULT_MODELS = {
   ollama: 'llama3',
 };
 const LLM_PROVIDER_ORDER = ['openai', 'anthropic', 'groq', 'ollama'];
-// 引擎（ifl_api／ifl_mcdc）目前支援的供應商——如果以後 mcdc_lite 這邊比引擎先加了
+// 引擎（ifl_api／ifl_mcdc）目前支援的供應商——如果以後 mynsn 這邊比引擎先加了
 // 新供應商，先把新的名字留在這個清單外面，Step 3 就會自動擋下來、顯示提示，
 // 不會讓使用者送出一個引擎根本不認得的 provider。
 const ENGINE_SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'groq', 'ollama'];
@@ -1213,7 +1213,7 @@ function buildLlmPayload(provider, model) {
 }
 
 // ── 目前使用的 AI：全域單一選擇，Step 3／AI 生成程式碼／AI 建議參數都讀這一個 ──
-const ACTIVE_LLM_KEY = 'mcdc_lite_active_llm';
+const ACTIVE_LLM_KEY = 'mynsn_active_llm';
 
 function loadActiveLlm() {
   try {
