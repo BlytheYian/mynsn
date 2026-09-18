@@ -858,9 +858,24 @@ class IFLOrchestrator:
 
             loss_history.append(_total_loss())
 
-        # ── 步驟 5.5：以完整 test_suite（含 IFL 生成）重建 _covered_by ──
-        # 初始建立時只包含隨機測試，IFL 迴圈的側面覆蓋未追蹤，在此補齊
-        _covered_by = {}
+        # ── 步驟 5.5：重播 all_generated，取得完整地面真相 + 每個缺口的真實佐證 ──
+        # 從空矩陣重新播放全部案例（含隨機初始、LLM True 側、Z3 補集 False 側，
+        # 也包含被 Gate 否決的案例——覆蓋率矩陣看的是「探針有沒有跑到」，跟
+        # Gate 有沒有接受無關）。MCDCCoverageEngine._check_pair 在真正判定一組
+        # 獨立對有效的當下，會把「條件值=True 的那筆」跟「條件值=False 的
+        # 那筆」測試 id 一併寫進 matrix._evidence——這裡直接讀出來就是實際
+        # 參與驗證的那組配對，不用另外重新猜測或重新驗證一次。
+        #
+        # 🐛 BUG 修復歷程：
+        #   v1（舊版）用同一顆 _tid 同時當兩個方向的佐證，導致兩個方向顯示
+        #       同一筆互相矛盾的案例；且只在 test_suite 裡找，被 Gate 拒絕
+        #       的案例即使是真正造成覆蓋的那筆也顯示不出來。
+        #   v2（前一版）改成各自獨立找「條件值方向對」的案例，但沒驗證兩筆
+        #       案例真的構成有效配對，可能兩筆案例根本沒到達目標決策節點、
+        #       決策也沒有不同，顯示出來的佐證是誤導的。
+        #   v3（本版）：不在 orchestrator 這層另外重新實作一次配對驗證，而是
+        #       讓 _check_pair 在它本來就會做的驗證通過時，直接記錄下真正
+        #       用到的兩筆測試 id，orchestrator 只需要讀取這個記錄。
         _replay_mats = [
             MCDCMatrix(condition_set=dn_i.condition_set) for dn_i in decision_nodes
         ]
@@ -869,12 +884,15 @@ class IFLOrchestrator:
             if not _tid:
                 continue
             for _rm in _replay_mats:
-                _before = set(_rm._covered)
                 self.engine._update_one(_rm, log, _tid)
-                for (_cid, _flip) in (_rm._covered - _before):
-                    _k2 = f"{_cid}_{_flip}"
-                    if _k2 not in _covered_by:
-                        _covered_by[_k2] = _tid
+
+        def _resolve_case(test_id: str | None) -> dict | None:
+            if test_id is None:
+                return None
+            entry = next(
+                (e for e in all_generated if e.get("__test_id") == test_id), None
+            )
+            return {k: v for k, v in entry.items() if not k.startswith("__")} if entry else None
 
         # ── 步驟 6：組裝結果 ──
         total_tokens = sum(
@@ -884,8 +902,13 @@ class IFLOrchestrator:
 
         # ── 以矩陣地面真相修正 gap_map ──
         # _gap_map 只記錄「主動瞄準」的缺口；隨機初始測試或附帶覆蓋不在其中，
-        # 需對照 MCDCMatrix._covered / _infeasible 補正，否則 UI 顯示錯誤狀態。
-        for dn_i, mat_i in zip(decision_nodes, matrices):
+        # 需對照地面真相補正，否則 UI 顯示錯誤狀態。這裡改用 _replay_mats
+        # （重播全部 all_generated 得到的完整結果）而不是 matrices（main 迴圈
+        # 用的那份）——matrices 每次迭代只有 target_matrix 那個決策節點會被
+        # 拿去跟新測試配對比較，其餘決策節點的矩陣可能漏掉「側面覆蓋」
+        # （追其他缺口時生成的測試，剛好也順便覆蓋了這個節點），_replay_mats
+        # 才是把 log 裡所有案例對所有決策節點都重新比對過的完整地面真相。
+        for dn_i, mat_i in zip(decision_nodes, _replay_mats):
             for _cond in dn_i.condition_set.conditions:
                 _cid = _cond.cond_id
                 for _flip in ("T2F", "F2T"):
@@ -894,19 +917,10 @@ class IFLOrchestrator:
                     _in_infeasible = (_cid, _flip) in mat_i._infeasible
                     existing_status = self._gap_map.get(_key, {}).get("status")
                     if _in_covered and existing_status != "covered":
-                        # 隱性覆蓋（隨機初始或其他缺口附帶覆蓋）
-                        # 直接從增量記錄中取出首次覆蓋此 pair 的案例
-                        _rep_case = None
-                        _covering_tid = _covered_by.get(_key)
-                        if _covering_tid:
-                            _tc_entry = next(
-                                (tc for tc in test_suite
-                                 if tc.get("__test_id") == _covering_tid),
-                                None
-                            )
-                            if _tc_entry:
-                                _rep_case = {k: v for k, v in _tc_entry.items()
-                                             if not k.startswith("__")}
+                        # 隱性覆蓋（隨機初始或其他缺口附帶覆蓋）：直接讀
+                        # _check_pair 記錄下來的真實佐證測試 id。
+                        _covering_tid = mat_i._evidence.get((_cid, _flip))
+                        _rep_case = _resolve_case(_covering_tid)
                         self._gap_map[_key] = {
                             "status": "covered",
                             "condition_id": _cid,

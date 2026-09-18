@@ -175,8 +175,8 @@
   .gap-chart-bar { height:100%; background:var(--brand); border-radius:999px; }
   .gap-chart-count { flex:0 0 30px; text-align:right; font-size:11.5px; color:#475569; }
 
-  /* ── 進入點：左邊建立新環境／選擇已有環境（垂直排列，約佔 1/3 寬），右邊上方是
-     程式碼來源（上傳／GitHub／AI／空白），下方是選擇測試——三塊用灰線分隔。────── */
+  /* ── 進入點：左邊建立新環境／選擇已有環境（垂直排列，約佔 1/3 寬），右邊是
+     程式碼來源（上傳／GitHub／AI／空白）。────── */
   .test-entry-wrap { flex:1; display:flex; align-items:center; justify-content:center; min-height:560px; padding:20px; }
   .entry-columns { display:flex; align-items:stretch; width:100%; max-width:880px; }
   .entry-left {
@@ -184,10 +184,9 @@
     gap:14px; padding:24px 28px 24px 8px; border-right:1px solid var(--line);
   }
   .entry-right { flex:1; min-width:0; display:flex; flex-direction:column; padding-left:32px; }
-  .entry-right-top, .entry-right-bottom {
+  .entry-right-top {
     flex:1; display:flex; flex-direction:column; justify-content:center; padding:20px 0;
   }
-  .entry-right-top { border-bottom:1px solid var(--line); }
   .entry-section-title { font-size:12px; font-weight:700; color:var(--sub); margin-bottom:14px; text-transform:uppercase; letter-spacing:.05em; }
   /* 固定 4 欄：選項湊滿 4 個時剛好一排（程式碼來源現在正好 4 個），超過 4 個
      才會換到下一排；只有 1 個選項（目前的 MC/DC）時也只佔 4 欄裡的 1 欄，
@@ -239,7 +238,6 @@
      一次只顯示目前步驟；整體高度跟程式碼區塊一致，底部才會對齊。 ── */
   .step-panel { flex:0 0 400px; height:600px; display:flex; flex-direction:column; }
   .step-indicators { display:flex; justify-content:center; gap:6px; margin-bottom:14px; flex-shrink:0; position:relative; z-index:2; }
-  .quick-switch-wrap { position:absolute; right:0; top:50%; transform:translateY(-50%); }
   .step-dot {
     width:10px; height:10px; padding:0; border-radius:3px; border:none; cursor:pointer;
     background:#e2e8f0; transition:.15s;
@@ -369,7 +367,7 @@
 
         <!-- GitHub 登入彈出視窗處理中 -->
         <div id="gh-connecting-panel" class="gh-login-panel hidden">
-          <div id="gh-device-status" class="hint" style="text-align:center;">已在彈出視窗開啟 GitHub 登入，請在該視窗完成授權…</div>
+          <div id="gh-device-status" class="hint" style="text-align:center;">等待完成授權…</div>
           <div id="gh-device-error" class="error hidden" style="margin-top:8px;"></div>
         </div>
 
@@ -430,16 +428,6 @@
             <button id="btn-env-picker-open" class="btn btn-primary" style="flex:0 0 auto;">開啟</button>
           </div>
           <div id="env-picker-error" class="error hidden" style="margin-top:8px;"></div>
-        </div>
-      </div>
-
-      <div class="entry-right-bottom">
-        <div class="entry-section-title">選擇測試</div>
-        <div class="entry-tile-grid" id="test-type-tabs">
-          <button type="button" class="entry-tile active" data-test-type="mcdc">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
-            <span>MC/DC</span>
-          </button>
         </div>
       </div>
     </div>
@@ -565,18 +553,6 @@
       <button class="step-dot" data-step="3" onclick="maybeGoToStep(3)" aria-label="步驟 3"></button>
       <button class="step-dot" data-step="4" onclick="maybeGoToStep(4)" aria-label="步驟 4"></button>
       <button class="step-dot" data-step="5" onclick="maybeGoToStep(5)" aria-label="步驟 5"></button>
-
-      <!-- 快速切換測試類型——目前只有 MC/DC 這一種，先把入口搭好，之後加新測試類型
-           不用再改版面結構。 -->
-      <div class="quick-switch-wrap">
-        <button type="button" id="btn-quick-switch-test" class="icon-btn" onclick="toggleQuickSwitchMenu()" aria-label="切換測試類型" title="切換測試類型">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7.5 7.5"/><path d="M3 21l7.5-7.5"/></svg>
-        </button>
-        <div id="quick-switch-menu" class="import-popover hidden" style="left:auto; right:0; width:190px; padding:8px;">
-          <div class="lbl" style="margin:2px 6px 8px;">測試類型</div>
-          <button type="button" class="menu-item" style="color:var(--brand); font-weight:700;" disabled>MC/DC</button>
-        </div>
-      </div>
     </div>
 
     <div class="step-content-frame" id="stepper">
@@ -1021,19 +997,6 @@ document.addEventListener('click', (e) => {
   if (pop.classList.contains('hidden')) return;
   if (pop.contains(e.target) || $('btn-import-toggle').contains(e.target)) return;
   toggleImportPopover(false);
-});
-
-// ── 步驟指示器右側：快速切換測試類型選單（目前只有 MC/DC，先把入口搭好）───────
-function toggleQuickSwitchMenu(forceOpen) {
-  const menu = $('quick-switch-menu');
-  const willOpen = forceOpen !== undefined ? forceOpen : menu.classList.contains('hidden');
-  menu.classList.toggle('hidden', !willOpen);
-}
-document.addEventListener('click', (e) => {
-  const menu = $('quick-switch-menu');
-  if (menu.classList.contains('hidden')) return;
-  if (menu.contains(e.target) || $('btn-quick-switch-test').contains(e.target)) return;
-  toggleQuickSwitchMenu(false);
 });
 
 function updateLockedCodeLineNumbers() {
@@ -1537,7 +1500,7 @@ $('btn-choose-github').onclick = () => {
   hide('provider-popup');
   show('gh-connecting-panel');
   ghShowDeviceError('');
-  $('gh-device-status').textContent = '已在彈出視窗開啟 GitHub 登入，請在該視窗完成授權…';
+  $('gh-device-status').textContent = '等待完成授權…';
 
   const w = 520, h = 680;
   const left = window.screenX + (window.outerWidth - w) / 2;
@@ -1862,7 +1825,7 @@ function renderParamRowCells(tr, { name, typ, lo, hi, boolRestrict, nameEditable
     <td>
       <select data-param="${escapeHtml(name)}" class="param-type">
         <option value="int" ${typ === 'int' ? 'selected' : ''}>整數</option>
-        <option value="bool" ${typ === 'bool' ? 'selected' : ''}>布林（是／否）</option>
+        <option value="bool" ${typ === 'bool' ? 'selected' : ''}>布林</option>
         <option value="float" ${typ === 'float' ? 'selected' : ''}>浮點數</option>
       </select>
     </td>
@@ -2508,18 +2471,8 @@ $('btn-new-environment').onclick = () => {
   enterTestFlow();
 };
 
-// ── 軟體測試入口：先選測試類型，再建立新環境／選擇已有環境；選完才顯示編輯器
-// 跟操作側欄（.test-layout）——未來要加其他測試類型，都在這個進入畫面加選項，
-// 不用改動下面的編輯器／步驟流程。目前只有 MC/DC 一種，先把骨架搭好。
-let selectedTestType = 'mcdc';
-
-document.querySelectorAll('#test-type-tabs .entry-tile').forEach((btn) => {
-  btn.onclick = () => {
-    document.querySelectorAll('#test-type-tabs .entry-tile').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedTestType = btn.dataset.testType;
-  };
-});
+// 目前只有 MC/DC 一種測試類型，固定帶入 API 請求，不再顯示選擇 UI。
+const selectedTestType = 'mcdc';
 
 // 「程式碼來源」四按鈕／環境選擇器互斥顯示同一塊版面（右上），切換時用淡入＋
 // 輕微位移的動畫（跟步驟卡片的 stepCardIn 同手法）。重新加同一個動畫 class 前

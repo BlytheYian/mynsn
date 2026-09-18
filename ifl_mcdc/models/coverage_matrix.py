@@ -28,6 +28,11 @@ class MCDCMatrix:
     condition_set: ConditionSet
     _covered: set[tuple[str, str]] = field(default_factory=set, repr=False)
     _infeasible: set[tuple[str, str]] = field(default_factory=set, repr=False)
+    _evidence: dict[tuple[str, str], str] = field(default_factory=dict, repr=False)
+    # (cond_id, flip) → test_id：實際驗證出這組獨立對的其中一筆測試 id
+    # （該筆測試自己的條件探測值就是這個 flip 方向的目標值），由
+    # MCDCCoverageEngine._check_pair 在真正判定配對有效的當下寫入，
+    # 讓報告顯示的佐證案例一定是真正參與驗證的那筆，不是事後另外找的。
 
     @property
     def k(self) -> int:
@@ -93,6 +98,13 @@ class MCDCMatrix:
                         )
                     )
         return gaps
+
+    def record_evidence(self, cond_id: str, flip_direction: str, test_id: str | None) -> None:
+        """記錄實際證明此翻轉方向的測試 id（first-wins：保留第一次發現時的配對，
+        跟 mark_covered 的「一旦覆蓋就不會取消」精神一致）。"""
+        if test_id is None:
+            return
+        self._evidence.setdefault((cond_id, flip_direction), test_id)
 
     def mark_covered(self, cond_id: str, flip_direction: str) -> None:
         """標記指定條件的翻轉方向為已覆蓋。

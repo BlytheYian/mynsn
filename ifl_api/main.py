@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .branch_routes import router as branch_router
 from .routes import router
 
 app = FastAPI(title="IFL-MCDC Core API", version="0.1.0")
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(branch_router)
 
 
 @app.get("/healthz")

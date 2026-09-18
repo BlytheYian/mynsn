@@ -89,6 +89,17 @@ class MCDCCoverageEngine:
                 other_flip = "T2F" if flip == "F2T" else "F2T"
                 matrix.mark_covered(cond.cond_id, other_flip)
 
+                # 記錄這組配對裡，真正代表「條件值=True」跟「條件值=False」
+                # 的各自是哪一筆測試——F2T 的佐證案例該秀 True 那筆、T2F 該秀
+                # False 那筆，這樣才是真的參與驗證此配對的案例，不是事後另外
+                # 找的、跟這組配對無關的同值案例。
+                tid_a = recs_a[0].test_id if recs_a else None
+                tid_b = recs_b[0].test_id if recs_b else None
+                tid_true = tid_a if rec_a.value else tid_b
+                tid_false = tid_b if rec_a.value else tid_a
+                matrix.record_evidence(cond.cond_id, "F2T", tid_true)
+                matrix.record_evidence(cond.cond_id, "T2F", tid_false)
+
     def _others_ok(
         self,
         matrix: MCDCMatrix,
