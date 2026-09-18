@@ -70,9 +70,6 @@ results/
 *.pdb
 *.class
 
-# Nested project copies and backups (relative to repository root)
-/ifl_mcdc-master/
-/ifl_mcdc-master未處理C備份/
 
 # Editor and operating-system temporary files
 *.swp
@@ -84,23 +81,3 @@ Desktop.ini
 .claude/
 .github/
 .vscode/
-docs/
-scripts/
-paper_camera_ready_2.txt
-IFL_MCDC_C語言擴充與UI更動概述.docx
-run_validation.py
-run_validation_complex.py
-run_ifl_only.py
-run_pynguin_experiments.py
-run_ifl_diversity.py
-run_crosshair_benchmark.py
-run_c_experiments.py
-run_complexity_experiments.py
-run_convergence.py
-run_coverup.py
-fix_initial_generation.md
-nl_to_code.py
-validate_llm_semantics.py
-validation_fixtures.py
-ANALYSIS_RUN1.md
-compare_ast_treeesitter.py

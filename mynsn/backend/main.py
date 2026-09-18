@@ -7,7 +7,7 @@
 
 啟動方式（需先啟動 ifl_api）：
     uvicorn ifl_api.main:app --port 8100 &
-    uvicorn mcdc_lite.backend.main:app --reload --port 8200
+    uvicorn mynsn.backend.main:app --reload --port 8200
 
 環境變數從專案根目錄的 .env 讀取（IFL_API_BASE_URL、GITHUB_OAUTH_CLIENT_ID、
 GITHUB_OAUTH_CLIENT_SECRET、GITHUB_OAUTH_REDIRECT_URI），不用手動 export。

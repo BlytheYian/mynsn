@@ -457,12 +457,5 @@ pytest tests/integration/
 | `openai` | `OpenAIBackend` | 預設 `gpt-4.1-mini`，支援 temperature |
 | `ollama` | `OllamaBackend` | 本地推論 |
 
-uvicorn ifl_api.main:app --port 8100 & uvicorn mcdc_lite.backend.main:app --port 8200
-
-# 保險理賠資格判斷
-THRESHOLD = 180
-
-def is_eligible(age: int, high_risk: bool, days_since_last: int, egg_allergy: bool):
-    if (age >= 65 or high_risk) and days_since_last > THRESHOLD and not egg_allergy:
-        return True
-    return False
+uvicorn ifl_api.main:app --port 8100
+uvicorn mynsn.backend.main:app --port 8200
